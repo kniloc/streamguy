@@ -1,2 +1,2 @@
-# StreamGuy
+# Stream Guy
 
