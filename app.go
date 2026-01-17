@@ -63,6 +63,35 @@ type App struct {
 	overlayDrawBtn widget.Clickable
 }
 
+type TwitchChatMessageData struct {
+	Message struct {
+		Message string         `json:"message"`
+		Role    int            `json:"role"`
+		Emotes  []render.Emote `json:"emotes"`
+	} `json:"message"`
+
+	User struct {
+		Badges      []BadgeData `json:"badges"`
+		ID          string      `json:"id"`
+		Login       string      `json:"login"`
+		DisplayName string      `json:"name"`
+		Color       string      `json:"color"`
+	} `json:"user"`
+}
+
+type BadgeData struct {
+	Name     string `json:"name"`
+	ImageURL string `json:"imageUrl"`
+}
+
+type TwitchRewardRedemptionData struct {
+	Username string `json:"user_name"`
+	Reward   struct {
+		Title     string `json:"title"`
+		UserInput string `json:"user_input"`
+	} `json:"reward"`
+}
+
 func (a *App) HandleChatMessage(data json.RawMessage, timestamp string) {
 	var msgData TwitchChatMessageData
 	if err := json.Unmarshal(data, &msgData); err != nil {
@@ -106,41 +135,12 @@ func (a *App) HandleRewardRedemption(data json.RawMessage) {
 	log.Printf("Reward: %s: %s", username, redemption)
 }
 
-type TwitchChatMessageData struct {
-	Message struct {
-		Message string         `json:"message"`
-		Role    int            `json:"role"`
-		Emotes  []render.Emote `json:"emotes"`
-	} `json:"message"`
-
-	User struct {
-		Badges      []BadgeData `json:"badges"`
-		ID          string      `json:"id"`
-		Login       string      `json:"login"`
-		DisplayName string      `json:"name"`
-		Color       string      `json:"color"`
-	} `json:"user"`
-}
-
-type BadgeData struct {
-	Name     string `json:"name"`
-	ImageURL string `json:"imageUrl"`
-}
-
 func convertBadges(badges []BadgeData) []render.Badge {
 	result := make([]render.Badge, len(badges))
 	for i, b := range badges {
 		result[i] = render.Badge{Name: b.Name, ImageURL: b.ImageURL}
 	}
 	return result
-}
-
-type TwitchRewardRedemptionData struct {
-	Username string `json:"user_name"`
-	Reward   struct {
-		Title     string `json:"title"`
-		UserInput string `json:"user_input"`
-	} `json:"reward"`
 }
 
 func (a *App) findMatchingKeyword(message string) string {
