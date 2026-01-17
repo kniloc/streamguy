@@ -62,9 +62,22 @@ func NewApp() *App {
 	application.badgeManager = assets.NewBadgeManager(application.downloadPool)
 	application.windowRegistry = window.NewRegistry()
 	application.textParser = render.NewTextParser()
-	application.placementManager = &window.PlacementManager{}
-	*application.placementManager = *window.NewPlacementManager()
+
+	application.placementManager = window.NewPlacementManager()
 	application.placementManager.Rng = rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	application.popupService = &popup.Service{
+		ImageCache:       application.imageCache,
+		EmoteManager:     application.emoteManager,
+		BadgeManager:     application.badgeManager,
+		TextParser:       application.textParser,
+		WindowRegistry:   application.windowRegistry,
+		PlacementManager: application.placementManager,
+		Theme:            application.theme,
+		LoadedFontFace:   application.loadedFontFace,
+		IsPaused:         application.isPaused,
+		Keywords:         application.config.Keywords,
+	}
 
 	application.streamerBotClient = streamerbot.NewClient(application, application.config.StreamerbotHost, application.config.StreamerbotPort)
 
