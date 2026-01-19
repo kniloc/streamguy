@@ -3,23 +3,29 @@ package popup
 import (
 	"context"
 	"fmt"
+	"image"
 	"image/color"
 	"image/gif"
 	"log"
 	"time"
 
 	"gioui.org/app"
+	"gioui.org/f32"
 	"gioui.org/font"
 	"gioui.org/layout"
 	"gioui.org/op"
+	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 	"gioui.org/text"
 	"gioui.org/unit"
 	"gioui.org/widget/material"
 
 	"stream-guy/internal/assets"
+	"stream-guy/internal/download"
 	"stream-guy/internal/render"
 	"stream-guy/internal/window"
+
+	"gioui.org/io/system"
 )
 
 type Service struct {
@@ -29,6 +35,7 @@ type Service struct {
 	TextParser       *render.TextParser
 	WindowRegistry   *window.Registry
 	PlacementManager *window.PlacementManager
+	DownloadPool     *download.Pool
 
 	Theme          *material.Theme
 	LoadedFontFace font.FontFace
@@ -140,6 +147,183 @@ func (s *Service) CreateGifPopup(keyword string, message string) error {
 	}()
 
 	return nil
+}
+
+func (s *Service) CreatePhotoPopup(imageURL string, onAccept func(url, mimeType string)) error {
+	if s.paused() {
+		return nil
+	}
+	if s.WindowRegistry == nil || s.PlacementManager == nil || s.DownloadPool == nil {
+		return fmt.Errorf("popup service not initialized")
+	}
+
+	mimeType, _ := ValidatePhotoURL(imageURL)
+
+	pw := &Window{
+		GioWindow: new(app.Window),
+		Title:     time.Now().Format("2006-01-02 15:04:05.00"),
+		PhotoURL:  imageURL,
+		PhotoMime: mimeType,
+		OnAccept:  onAccept,
+		StartTime: time.Now(),
+	}
+
+	if err := Initialize(pw, pw.Title, PhotoPopupWidth, PhotoPopupHeight, s.PlacementManager); err != nil {
+		return fmt.Errorf("failed to initialize photo popup window: %w", err)
+	}
+
+	s.WindowRegistry.Register(pw.GioWindow)
+
+	s.DownloadPool.Submit(imageURL, "photo", func(result *download.Result) {
+		if result.Error != nil {
+			log.Printf("Failed to download photo: %v", result.Error)
+			pw.GioWindow.Perform(system.ActionClose)
+			return
+		}
+
+		if pw.PhotoMime == "" {
+			detectedMime, valid := MimeTypeFromContentType(result.ContentType)
+			if !valid {
+				log.Printf("Unsupported image type from Content-Type: %s", result.ContentType)
+				pw.GioWindow.Perform(system.ActionClose)
+				return
+			}
+			pw.PhotoMime = detectedMime
+		}
+
+		if result.StaticImage != nil {
+			pw.PhotoImage = result.StaticImage
+		} else if result.GIF != nil && len(result.GIF.Image) > 0 {
+			pw.PhotoImage = result.GIF.Image[0]
+		}
+		pw.GioWindow.Invalidate()
+	})
+
+	go func() {
+		th := s.themeWithFont()
+		if err := s.runPhotoPopup(pw, th); err != nil {
+			log.Printf("Photo popup error: %v", err)
+		}
+	}()
+
+	return nil
+}
+
+func (s *Service) runPhotoPopup(pw *Window, th *material.Theme) error {
+	var ops op.Ops
+
+	defer func() {
+		window.CleanupWindowHandle(pw.Title)
+		if s.WindowRegistry != nil {
+			s.WindowRegistry.Unregister(pw.GioWindow)
+		}
+	}()
+
+	for {
+		e := pw.GioWindow.Event()
+		switch ev := e.(type) {
+		case app.DestroyEvent:
+			return ev.Err
+
+		case app.FrameEvent:
+			gtx := app.NewContext(&ops, ev)
+
+			if pw.AcceptBtn.Clicked(gtx) {
+				if pw.OnAccept != nil {
+					pw.OnAccept(pw.PhotoURL, pw.PhotoMime)
+				}
+				pw.GioWindow.Perform(system.ActionClose)
+				continue
+			}
+
+			if pw.RejectBtn.Clicked(gtx) {
+				pw.GioWindow.Perform(system.ActionClose)
+				continue
+			}
+
+			paint.Fill(gtx.Ops, render.SilverBackground)
+			s.renderPhotoContent(gtx, pw, th)
+
+			ev.Frame(gtx.Ops)
+		}
+	}
+}
+
+func (s *Service) renderPhotoContent(gtx layout.Context, pw *Window, th *material.Theme) layout.Dimensions {
+	return layout.UniformInset(unit.Dp(10)).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+		return layout.Flex{
+			Axis:      layout.Vertical,
+			Alignment: layout.Middle,
+		}.Layout(gtx,
+			layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+				if pw.PhotoImage == nil {
+					lbl := material.Body1(th, "Loading image...")
+					lbl.Alignment = text.Middle
+					return layout.Center.Layout(gtx, lbl.Layout)
+				}
+				return s.renderPhotoImage(gtx, pw.PhotoImage)
+			}),
+			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+				return layout.Spacer{Height: unit.Dp(10)}.Layout(gtx)
+			}),
+			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+				return layout.Flex{
+					Axis:      layout.Horizontal,
+					Spacing:   layout.SpaceEvenly,
+					Alignment: layout.Middle,
+				}.Layout(gtx,
+					layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+						return layout.UniformInset(unit.Dp(5)).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+							btn := material.Button(th, &pw.AcceptBtn, "Accept")
+							btn.Background = color.NRGBA{R: 46, G: 139, B: 87, A: 255}
+							return btn.Layout(gtx)
+						})
+					}),
+					layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+						return layout.UniformInset(unit.Dp(5)).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+							btn := material.Button(th, &pw.RejectBtn, "Reject")
+							btn.Background = color.NRGBA{R: 178, G: 34, B: 34, A: 255}
+							return btn.Layout(gtx)
+						})
+					}),
+				)
+			}),
+		)
+	})
+}
+
+func (s *Service) renderPhotoImage(gtx layout.Context, img image.Image) layout.Dimensions {
+	bounds := img.Bounds()
+	imgWidth := bounds.Dx()
+	imgHeight := bounds.Dy()
+
+	maxWidth := gtx.Constraints.Max.X
+	maxHeight := gtx.Constraints.Max.Y - PhotoButtonHeight
+
+	scaleX := float32(maxWidth) / float32(imgWidth)
+	scaleY := float32(maxHeight) / float32(imgHeight)
+	scale := scaleX
+	if scaleY < scale {
+		scale = scaleY
+	}
+	if scale > 1 {
+		scale = 1
+	}
+
+	drawWidth := int(float32(imgWidth) * scale)
+	drawHeight := int(float32(imgHeight) * scale)
+
+	return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+		defer clip.Rect{Max: image.Point{X: drawWidth, Y: drawHeight}}.Push(gtx.Ops).Pop()
+		imgOp := paint.NewImageOp(img)
+		imgOp.Filter = paint.FilterLinear
+		imgOp.Add(gtx.Ops)
+
+		op.Affine(f32.Affine2D{}.Scale(f32.Point{}, f32.Point{X: scale, Y: scale})).Add(gtx.Ops)
+		paint.PaintOp{}.Add(gtx.Ops)
+
+		return layout.Dimensions{Size: image.Point{X: drawWidth, Y: drawHeight}}
+	})
 }
 
 func (s *Service) prefetchAssets(segments []assets.EmoteSegment, badges []render.Badge) {

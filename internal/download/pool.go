@@ -36,6 +36,7 @@ type Result struct {
 	GIF         *gif.GIF
 	StaticImage image.Image
 	IsGIF       bool
+	ContentType string
 	Error       error
 }
 
@@ -93,6 +94,8 @@ func (p *Pool) downloadImage(url string) *Result {
 		result.Error = fmt.Errorf("bad status: %d", res.StatusCode)
 		return result
 	}
+
+	result.ContentType = res.Header.Get("Content-Type")
 
 	if res.ContentLength > MaxDownloadSizeBytes {
 		result.Error = fmt.Errorf("response too large: %d bytes", res.ContentLength)

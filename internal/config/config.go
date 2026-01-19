@@ -9,6 +9,7 @@ import (
 type Config struct {
 	StreamerbotHost string            `json:"streamerbot_host"`
 	StreamerbotPort string            `json:"streamerbot_port"`
+	PiURL           string            `json:"pi_url"`
 	Keywords        map[string]string `json:"keywords"`
 }
 

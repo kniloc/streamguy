@@ -34,6 +34,9 @@ const (
 	MinWindowHeight     = 60
 	MaxWindowHeight     = 600
 	FrameUpdateInterval = 500 * time.Millisecond
+	PhotoPopupWidth     = 500
+	PhotoPopupHeight    = 450
+	PhotoButtonHeight   = 40
 )
 
 type Window struct {
@@ -56,6 +59,14 @@ type Window struct {
 
 	AnimCtx    context.Context
 	AnimCancel context.CancelFunc
+
+	// Photo popup fields
+	PhotoImage image.Image
+	PhotoURL   string
+	PhotoMime  string
+	AcceptBtn  widget.Clickable
+	RejectBtn  widget.Clickable
+	OnAccept   func(url, mimeType string)
 }
 
 func ClampHeight(height int) int {
@@ -227,6 +238,44 @@ func IsValidEmoteURL(url string) bool {
 	}
 
 	return true
+}
+
+func ValidatePhotoURL(url string) (mimeType string, valid bool) {
+	lowerURL := strings.ToLower(url)
+
+	switch {
+	case strings.HasSuffix(lowerURL, ".png"):
+		return "image/png", true
+	case strings.HasSuffix(lowerURL, ".jpg"), strings.HasSuffix(lowerURL, ".jpeg"):
+		return "image/jpeg", true
+	case strings.HasSuffix(lowerURL, ".webp"):
+		return "image/webp", true
+	}
+
+	switch {
+	case strings.HasSuffix(lowerURL, "@png"):
+		return "image/png", true
+	case strings.HasSuffix(lowerURL, "@jpg"), strings.HasSuffix(lowerURL, "@jpeg"):
+		return "image/jpeg", true
+	case strings.HasSuffix(lowerURL, "@webp"):
+		return "image/webp", true
+	}
+
+	return "", false
+}
+
+func MimeTypeFromContentType(contentType string) (mimeType string, valid bool) {
+	ct := strings.ToLower(contentType)
+	switch {
+	case strings.Contains(ct, "image/png"):
+		return "image/png", true
+	case strings.Contains(ct, "image/jpeg"):
+		return "image/jpeg", true
+	case strings.Contains(ct, "image/webp"):
+		return "image/webp", true
+	default:
+		return "", false
+	}
 }
 
 func HandleCopyButton(gtx layout.Context, popup *Window) {

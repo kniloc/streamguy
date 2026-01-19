@@ -24,6 +24,7 @@ import (
 	"stream-guy/internal/config"
 	"stream-guy/internal/download"
 	"stream-guy/internal/overlay"
+	"stream-guy/internal/pi"
 	"stream-guy/internal/popup"
 	"stream-guy/internal/render"
 	"stream-guy/internal/streamerbot"
@@ -31,7 +32,7 @@ import (
 )
 
 const (
-	ControlPanelWidth  = 400
+	ControlPanelWidth  = 450
 	ControlPanelHeight = 300
 	ControlPanelTitle  = "Control Panel"
 	AppTitle           = "Stream Guy"
@@ -77,6 +78,7 @@ func NewApp() *App {
 		TextParser:       application.textParser,
 		WindowRegistry:   application.windowRegistry,
 		PlacementManager: application.placementManager,
+		DownloadPool:     application.downloadPool,
 		Theme:            application.theme,
 		LoadedFontFace:   application.loadedFontFace,
 		IsPaused:         application.isPaused,
@@ -84,6 +86,11 @@ func NewApp() *App {
 	}
 
 	application.streamerBotClient = streamerbot.NewClient(application, application.config.StreamerbotHost, application.config.StreamerbotPort)
+
+	if application.config.PiURL != "" {
+		application.piClient = pi.NewClient(application.config.PiURL)
+		fmt.Printf("Pi client configured: %s\n", application.config.PiURL)
+	}
 
 	return application
 }
@@ -162,6 +169,10 @@ func (a *App) buildControlPanelLayout(gtx layout.Context, th *material.Theme, ws
 		a.overlay.ToggleDrawMode()
 	}
 
+	if a.clearImagesBtn.Clicked(gtx) {
+		a.piClient.ClearImages()
+	}
+
 	pauseText := "Pause Popups"
 	if a.isPaused() {
 		pauseText = "Resume Popups"
@@ -223,6 +234,10 @@ func (a *App) buildControlPanelLayout(gtx layout.Context, th *material.Theme, ws
 				}),
 				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 					btn := material.Button(th, &a.overlayDrawBtn, drawText)
+					return btn.Layout(gtx)
+				}),
+				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+					btn := material.Button(th, &a.clearImagesBtn, "Clear Images")
 					return btn.Layout(gtx)
 				}),
 			)

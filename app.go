@@ -17,6 +17,7 @@ import (
 	"stream-guy/internal/config"
 	"stream-guy/internal/download"
 	"stream-guy/internal/overlay"
+	"stream-guy/internal/pi"
 	"stream-guy/internal/popup"
 	"stream-guy/internal/streamerbot"
 	"stream-guy/internal/window"
@@ -38,6 +39,7 @@ type App struct {
 	// Shared services
 	downloadPool *download.Pool
 	popupService *popup.Service
+	piClient     *pi.Client
 
 	// Lifetime
 	ctx          context.Context
@@ -49,6 +51,7 @@ type App struct {
 	pausedMu       sync.RWMutex
 	clearAllBtn    widget.Clickable
 	pauseResumeBtn widget.Clickable
+	clearImagesBtn widget.Clickable
 
 	// Drawing Overlay
 	overlay        *overlay.Window
@@ -112,6 +115,27 @@ func (a *App) HandleRewardRedemption(data json.RawMessage) {
 				if err := speech.SpeakQueued(userInput); err != nil {
 					log.Printf("TTS error: %v", err)
 				}
+			}
+		}
+	}
+
+	if strings.Contains(redemption, "Photograph!") {
+		userInput := strings.TrimSpace(rData.UserInput)
+		if userInput != "" && a.popupService != nil {
+			if err := a.popupService.CreatePhotoPopup(userInput, func(url, mimeType string) {
+				log.Printf("Photo accepted: url=%s, mimeType=%s", url, mimeType)
+				if a.piClient != nil {
+					go func() {
+						resp, err := a.piClient.SendImage(url, mimeType)
+						if err != nil {
+							log.Printf("Failed to send image to Pi: %v", err)
+						} else {
+							log.Printf("Pi response: status=%s, message=%s", resp.Status, resp.Message)
+						}
+					}()
+				}
+			}); err != nil {
+				log.Printf("Failed to create photo popup: %v", err)
 			}
 		}
 	}
