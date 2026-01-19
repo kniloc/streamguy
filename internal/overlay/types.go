@@ -7,7 +7,7 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-const WindowTitle = "Popup Guy Overlay"
+const WindowTitle = "Stream Guy Overlay"
 
 var DefaultStrokeColor = color.NRGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0xFF}
 

@@ -34,7 +34,7 @@ const (
 	ControlPanelWidth  = 400
 	ControlPanelHeight = 300
 	ControlPanelTitle  = "Control Panel"
-	AppTitle           = "Popup Guy"
+	AppTitle           = "Stream Guy"
 	SpacerHeight       = 10
 )
 
