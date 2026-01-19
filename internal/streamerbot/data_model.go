@@ -32,9 +32,9 @@ func ConvertBadges(badges []BadgeData) []render.Badge {
 }
 
 type RewardRedemptionData struct {
-	Username string `json:"user_name"`
-	Reward   struct {
-		Title     string `json:"title"`
-		UserInput string `json:"user_input"`
+	Username  string `json:"user_name"`
+	UserInput string `json:"user_input"`
+	Reward    struct {
+		Title string `json:"title"`
 	} `json:"reward"`
 }

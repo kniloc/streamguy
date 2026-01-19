@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"os"
 	"runtime"
+	"stream-guy/internal/tts"
 	"time"
 
 	"gioui.org/app"
@@ -38,6 +39,9 @@ const (
 )
 
 func NewApp() *App {
+	if ttsErr := tts.InitSpeech(); ttsErr != nil {
+		log.Printf("Warning: TTS initialization failed: %v", ttsErr)
+	}
 	application := &App{}
 	application.ctx, application.cancel = context.WithCancel(context.Background())
 

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"stream-guy/internal/render"
+	"stream-guy/internal/tts"
 	"strings"
 	"sync"
 
@@ -99,7 +100,21 @@ func (a *App) HandleRewardRedemption(data json.RawMessage) {
 
 	username := rData.Username
 	redemption := rData.Reward.Title
-	log.Printf("Reward: %s: %s", username, redemption)
+	log.Printf("Redemption: %s", redemption)
+
+	if strings.EqualFold(redemption, "TTS") {
+		userInput := strings.TrimSpace(rData.UserInput)
+		hasBlockedPrefix := strings.HasPrefix(userInput, "!") || strings.HasPrefix(userInput, ":")
+		if userInput != "" && !hasBlockedPrefix {
+			speech := tts.GetSpeech()
+			if speech != nil {
+				log.Printf("TTS: %s says %s", username, userInput)
+				if err := speech.SpeakQueued(userInput); err != nil {
+					log.Printf("TTS error: %v", err)
+				}
+			}
+		}
+	}
 }
 
 func (a *App) findMatchingKeyword(message string) string {
