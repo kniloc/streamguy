@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
+	"regexp"
 	"stream-guy/internal/render"
 	"stream-guy/internal/tts"
 	"strings"
@@ -13,8 +15,11 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"stream-guy/internal/assets"
 	"stream-guy/internal/config"
+	"stream-guy/internal/db"
 	"stream-guy/internal/download"
 	"stream-guy/internal/overlay"
 	"stream-guy/internal/pi"
@@ -40,6 +45,7 @@ type App struct {
 	downloadPool *download.Pool
 	popupService *popup.Service
 	piClient     *pi.Client
+	dbPool       *pgxpool.Pool
 
 	// Lifetime
 	ctx          context.Context
@@ -139,6 +145,19 @@ func (a *App) HandleRewardRedemption(data json.RawMessage) {
 			}
 		}
 	}
+
+	if strings.Contains(redemption, "TreeShaker") {
+		re := regexp.MustCompile(`\d+`)
+		turnsStr := re.FindString(redemption)
+		if turnsStr != "" && a.dbPool != nil {
+			turns := 0
+			fmt.Sscanf(turnsStr, "%d", &turns)
+			formattedUsername := strings.ToLower(username)
+			if err := db.UpdateNumberOfTurns(a.ctx, a.dbPool, turns, formattedUsername); err != nil {
+				log.Printf("Failed to update turns for %s: %v", formattedUsername, err)
+			}
+		}
+	}
 }
 
 func (a *App) findMatchingKeyword(message string) string {
@@ -197,6 +216,10 @@ func (a *App) Shutdown() {
 
 		if a.downloadPool != nil {
 			a.downloadPool.Close()
+		}
+
+		if a.dbPool != nil {
+			a.dbPool.Close()
 		}
 	})
 }

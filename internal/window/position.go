@@ -471,9 +471,9 @@ func ConfigurePopWindow(hwnd windows.HWND) {
 
 	ProcSetWindowPos.Call(
 		uintptr(hwnd),
-		0,
+		^uintptr(0),
 		0, 0, 0, 0,
-		uintptr(SwpNoMove|SwpNoSize|SwpNoZOrder|SwpNoActivate|SwpFrameChanged),
+		uintptr(SwpNoMove|SwpNoSize|SwpNoActivate|SwpFrameChanged|SwpShowWindow),
 	)
 }
 

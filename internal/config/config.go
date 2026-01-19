@@ -4,12 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
-	StreamerbotHost string            `json:"streamerbot_host"`
-	StreamerbotPort string            `json:"streamerbot_port"`
-	PiURL           string            `json:"pi_url"`
+	StreamerbotHost string
+	StreamerbotPort string
+	PiURL           string
+	PostgresURL     string
 	Keywords        map[string]string `json:"keywords"`
 }
 
@@ -20,21 +23,35 @@ func LoadJSONFile[T any](filePath string, v *T) error {
 		return fmt.Errorf("error reading %s: %w", filePath, err)
 	}
 
-	if err := json.Unmarshal(data, v); err != nil {
-		return fmt.Errorf("error parsing %s: %w", filePath, err)
+	if jsonErr := json.Unmarshal(data, v); jsonErr != nil {
+		return fmt.Errorf("error parsing %s: %w", filePath, jsonErr)
 	}
 
 	return nil
 }
 
 func Load() *Config {
+	_ = godotenv.Load()
+
 	cfg := &Config{
 		Keywords: make(map[string]string),
 	}
 
 	if err := LoadJSONFile("config.json", cfg); err != nil {
 		fmt.Printf("%v\n", err)
-		return cfg
+	}
+
+	if host := os.Getenv("STREAMERBOT_HOST"); host != "" {
+		cfg.StreamerbotHost = host
+	}
+	if port := os.Getenv("STREAMERBOT_PORT"); port != "" {
+		cfg.StreamerbotPort = port
+	}
+	if piURL := os.Getenv("PUBLIC_PI"); piURL != "" {
+		cfg.PiURL = piURL
+	}
+	if pgURL := os.Getenv("POSTGRES_URL"); pgURL != "" {
+		cfg.PostgresURL = pgURL
 	}
 
 	fmt.Printf("Loaded config: Streamer.bot at %s:%s\n", cfg.StreamerbotHost, cfg.StreamerbotPort)

@@ -20,6 +20,8 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget/material"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"stream-guy/internal/assets"
 	"stream-guy/internal/config"
 	"stream-guy/internal/download"
@@ -34,8 +36,7 @@ import (
 const (
 	ControlPanelWidth  = 450
 	ControlPanelHeight = 300
-	ControlPanelTitle  = "Control Panel"
-	AppTitle           = "Stream Guy"
+	ControlPanelTitle  = "Stream Guy"
 	SpacerHeight       = 10
 )
 
@@ -89,7 +90,16 @@ func NewApp() *App {
 
 	if application.config.PiURL != "" {
 		application.piClient = pi.NewClient(application.config.PiURL)
-		fmt.Printf("Pi client configured: %s\n", application.config.PiURL)
+	}
+
+	if application.config.PostgresURL != "" {
+		pool, dbErr := pgxpool.New(application.ctx, application.config.PostgresURL)
+		if dbErr != nil {
+			log.Printf("Warning: Failed to connect to database: %v", dbErr)
+		} else {
+			application.dbPool = pool
+			fmt.Println("Database pool configured")
+		}
 	}
 
 	return application
@@ -149,7 +159,7 @@ func getWebSocketStatus(client *streamerbot.Client) string {
 	return "disconnected"
 }
 
-func (a *App) buildControlPanelLayout(gtx layout.Context, th *material.Theme, wsStatus string, gifCount int) layout.Dimensions {
+func (a *App) buildControlPanelLayout(gtx layout.Context, th *material.Theme, wsStatus string) layout.Dimensions {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 	memoryMB := m.Alloc / 1024 / 1024
@@ -185,35 +195,21 @@ func (a *App) buildControlPanelLayout(gtx layout.Context, th *material.Theme, ws
 
 	return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			return leftPadding.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-				return assets.WithFont(material.H5(th, AppTitle), assets.FontName).Layout(gtx)
-			})
-		}),
-		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			return layout.Spacer{Height: unit.Dp(SpacerHeight)}.Layout(gtx)
-		}),
-		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			wsText := fmt.Sprintf("Streamer.bot: %s", wsStatus)
 			return leftPadding.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-				return assets.WithFont(material.Body2(th, wsText), assets.FontName).Layout(gtx)
-			})
-		}),
-		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			gifText := fmt.Sprintf("Loaded GIFs: %d", gifCount)
-			return leftPadding.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-				return assets.WithFont(material.Body2(th, gifText), assets.FontName).Layout(gtx)
+				return assets.WithFont(material.H6(th, wsText), assets.FontName).Layout(gtx)
 			})
 		}),
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			winText := fmt.Sprintf("Active windows: %d", a.windowRegistry.Count())
 			return leftPadding.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-				return assets.WithFont(material.Body2(th, winText), assets.FontName).Layout(gtx)
+				return assets.WithFont(material.H6(th, winText), assets.FontName).Layout(gtx)
 			})
 		}),
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			perfText := fmt.Sprintf("Performance: %d MB | %d goroutines", memoryMB, numGoroutines)
 			return leftPadding.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-				return assets.WithFont(material.Body2(th, perfText), assets.FontName).Layout(gtx)
+				return assets.WithFont(material.H6(th, perfText), assets.FontName).Layout(gtx)
 			})
 		}),
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
@@ -270,10 +266,9 @@ func (a *App) runControlPanel(w *app.Window) error {
 		case app.FrameEvent:
 			gtx := app.NewContext(&ops, e)
 			wsStatus := getWebSocketStatus(a.streamerBotClient)
-			gifCount := len(a.imageCache.Gifs)
 
 			paint.Fill(gtx.Ops, color.NRGBA{R: 0xbd, G: 0xbd, B: 0xbd, A: 255})
-			a.buildControlPanelLayout(gtx, a.theme, wsStatus, gifCount)
+			a.buildControlPanelLayout(gtx, a.theme, wsStatus)
 			e.Frame(gtx.Ops)
 		}
 	}
