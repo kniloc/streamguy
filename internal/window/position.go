@@ -28,6 +28,17 @@ var (
 	ProcMonitorFromWindow    = User32.NewProc("MonitorFromWindow")
 	ProcGetMonitorInfo       = User32.NewProc("GetMonitorInfoW")
 	ProcIsWindow             = User32.NewProc("IsWindow")
+	ProcCreateWindowEx       = User32.NewProc("CreateWindowExW")
+	ProcRegisterClass        = User32.NewProc("RegisterClassW")
+	ProcDefWindowProc        = User32.NewProc("DefWindowProcW")
+
+	Kernel32            = windows.NewLazySystemDLL("kernel32.dll")
+	ProcGetModuleHandle = Kernel32.NewProc("GetModuleHandleW")
+)
+
+var (
+	popupOwnerHWND     windows.HWND
+	popupOwnerInitOnce sync.Once
 )
 
 const (
@@ -48,7 +59,53 @@ const (
 
 	WsExToolWindow = 0x00000080
 	WsExAppWindow  = 0x00040000
+
+	HwndMessageOnly = ^uintptr(2) // HWND_MESSAGE (-3)
+	WsPopup         = 0x80000000
 )
+
+type WNDCLASS struct {
+	Style         uint32
+	LpfnWndProc   uintptr
+	CbClsExtra    int32
+	CbWndExtra    int32
+	HInstance     uintptr
+	HIcon         uintptr
+	HCursor       uintptr
+	HbrBackground uintptr
+	LpszMenuName  *uint16
+	LpszClassName *uint16
+}
+
+func getPopupOwnerHWND() windows.HWND {
+	popupOwnerInitOnce.Do(func() {
+		className, _ := windows.UTF16PtrFromString("StreamGuyPopupOwner")
+
+		hInstance, _, _ := ProcGetModuleHandle.Call(0)
+
+		wc := WNDCLASS{
+			LpfnWndProc:   ProcDefWindowProc.Addr(),
+			HInstance:     hInstance,
+			LpszClassName: className,
+		}
+
+		ProcRegisterClass.Call(uintptr(unsafe.Pointer(&wc)))
+
+		hwnd, _, _ := ProcCreateWindowEx.Call(
+			0,
+			uintptr(unsafe.Pointer(className)),
+			0,
+			uintptr(WsPopup),
+			0, 0, 0, 0,
+			HwndMessageOnly,
+			0,
+			hInstance,
+			0,
+		)
+		popupOwnerHWND = windows.HWND(hwnd)
+	})
+	return popupOwnerHWND
+}
 
 type RECT struct {
 	Left   int32
@@ -462,7 +519,8 @@ func ConfigurePopWindow(hwnd windows.HWND) {
 		return
 	}
 
-	ProcSetWindowLongPtr.Call(uintptr(hwnd), GwlpHwndParent, 0)
+	owner := getPopupOwnerHWND()
+	ProcSetWindowLongPtr.Call(uintptr(hwnd), GwlpHwndParent, uintptr(owner))
 
 	ex, _, _ := ProcGetWindowLongPtr.Call(uintptr(hwnd), GwlExstyle)
 	ex |= WsExToolWindow

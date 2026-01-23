@@ -418,6 +418,7 @@ func (s *Service) runGifPopup(pw *Window, gifData *gif.GIF) error {
 
 		case app.FrameEvent:
 			gtx := app.NewContext(&ops, ev)
+
 			layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				if hasGif {
 					return RenderGifFrame(gtx, pw, gifData)
