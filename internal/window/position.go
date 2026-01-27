@@ -467,7 +467,6 @@ type enumWindowsState struct {
 
 var (
 	enumWindowsCallback uintptr
-	enumWindowsStatePtr *enumWindowsState
 	enumWindowsMu       sync.Mutex
 )
 

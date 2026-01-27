@@ -15,8 +15,6 @@ var GlobalMu sync.RWMutex
 var ByHwnd = make(map[windows.HWND]*Window)
 var Cursor windows.Handle
 
-const ControlPanelTitle = "Control Panel"
-
 var (
 	controlPanelHwnd   windows.HWND
 	controlPanelHwndMu sync.RWMutex
