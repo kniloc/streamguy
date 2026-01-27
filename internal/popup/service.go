@@ -94,6 +94,7 @@ func (s *Service) CreateChatPopup(username string, userColor color.NRGBA, badges
 	s.WindowRegistry.Register(pw.GioWindow)
 
 	go func() {
+		pw.GioWindow.Invalidate()
 		th := s.themeWithFont()
 		if err := s.runChatPopup(pw, th); err != nil {
 			log.Printf("Chat popup error: %v", err)
@@ -141,6 +142,7 @@ func (s *Service) CreateGifPopup(keyword string, message string) error {
 	s.WindowRegistry.Register(pw.GioWindow)
 
 	go func() {
+		pw.GioWindow.Invalidate()
 		if err := s.runGifPopup(pw, gifData); err != nil {
 			log.Printf("GIF popup error: %v", err)
 		}
@@ -200,6 +202,7 @@ func (s *Service) CreatePhotoPopup(imageURL string, onAccept func(url, mimeType 
 	})
 
 	go func() {
+		pw.GioWindow.Invalidate()
 		th := s.themeWithFont()
 		if err := s.runPhotoPopup(pw, th); err != nil {
 			log.Printf("Photo popup error: %v", err)
@@ -227,6 +230,8 @@ func (s *Service) runPhotoPopup(pw *Window, th *material.Theme) error {
 
 		case app.FrameEvent:
 			gtx := app.NewContext(&ops, ev)
+
+			ConfigureOnFirstFrame(pw)
 
 			if pw.AcceptBtn.Clicked(gtx) {
 				if pw.OnAccept != nil {
@@ -372,6 +377,8 @@ func (s *Service) runChatPopup(pw *Window, th *material.Theme) error {
 		case app.FrameEvent:
 			gtx := app.NewContext(&ops, ev)
 
+			ConfigureOnFirstFrame(pw)
+
 			HandleContextMenuEvents(gtx, pw)
 			HandleCopyButton(gtx, pw)
 
@@ -418,6 +425,8 @@ func (s *Service) runGifPopup(pw *Window, gifData *gif.GIF) error {
 
 		case app.FrameEvent:
 			gtx := app.NewContext(&ops, ev)
+
+			ConfigureOnFirstFrame(pw)
 
 			layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				if hasGif {

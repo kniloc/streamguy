@@ -17,6 +17,23 @@ var Cursor windows.Handle
 
 const ControlPanelTitle = "Control Panel"
 
+var (
+	controlPanelHwnd   windows.HWND
+	controlPanelHwndMu sync.RWMutex
+)
+
+func SetControlPanelHwnd(hwnd windows.HWND) {
+	controlPanelHwndMu.Lock()
+	controlPanelHwnd = hwnd
+	controlPanelHwndMu.Unlock()
+}
+
+func getControlPanelHwnd() windows.HWND {
+	controlPanelHwndMu.RLock()
+	defer controlPanelHwndMu.RUnlock()
+	return controlPanelHwnd
+}
+
 func wndProcFn(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr {
 	GlobalMu.RLock()
 	ow := ByHwnd[windows.HWND(hwnd)]
@@ -65,7 +82,7 @@ func wndProcFn(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr {
 				}
 			}
 
-			cp := window.FindWindowByTitleCached(ControlPanelTitle)
+			cp := getControlPanelHwnd()
 			if cp != 0 {
 				var r window.RECT
 				ret, _, _ := window.ProcGetWindowRect.Call(uintptr(cp), uintptr(unsafe.Pointer(&r)))

@@ -31,6 +31,7 @@ var (
 	ProcCreateWindowEx       = User32.NewProc("CreateWindowExW")
 	ProcRegisterClass        = User32.NewProc("RegisterClassW")
 	ProcDefWindowProc        = User32.NewProc("DefWindowProcW")
+	ProcShowWindow           = User32.NewProc("ShowWindow")
 
 	Kernel32            = windows.NewLazySystemDLL("kernel32.dll")
 	ProcGetModuleHandle = Kernel32.NewProc("GetModuleHandleW")
@@ -51,6 +52,8 @@ const (
 	SwpShowWindow   = 0x0040
 
 	MonitorDefaultToPrimary = 0x00000001
+
+	SwShowNoActivate = 4
 )
 
 const (
@@ -457,24 +460,40 @@ func IsWindowValid(hwnd windows.HWND) bool {
 	return ret != 0
 }
 
-func FindWindowByTitle(title string) windows.HWND {
-	var foundHwnd windows.HWND
+type enumWindowsState struct {
+	targetTitle string
+	foundHwnd   windows.HWND
+}
 
-	cb := windows.NewCallback(func(hwnd windows.HWND, lParam uintptr) uintptr {
+var (
+	enumWindowsCallback uintptr
+	enumWindowsStatePtr *enumWindowsState
+	enumWindowsMu       sync.Mutex
+)
+
+func init() {
+	enumWindowsCallback = windows.NewCallback(func(hwnd windows.HWND, lParam uintptr) uintptr {
+		state := (*enumWindowsState)(unsafe.Pointer(lParam))
 		textLen := 256
 		buf := make([]uint16, textLen)
 		ProcGetWindowText.Call(uintptr(hwnd), uintptr(unsafe.Pointer(&buf[0])), uintptr(textLen))
 		windowTitle := windows.UTF16ToString(buf)
 
-		if windowTitle == title && foundHwnd == 0 {
-			foundHwnd = hwnd
+		if windowTitle == state.targetTitle && state.foundHwnd == 0 {
+			state.foundHwnd = hwnd
 			return 0
 		}
 		return 1
 	})
+}
 
-	ProcEnumWindows.Call(cb, 0)
-	return foundHwnd
+func FindWindowByTitle(title string) windows.HWND {
+	enumWindowsMu.Lock()
+	defer enumWindowsMu.Unlock()
+
+	state := &enumWindowsState{targetTitle: title}
+	ProcEnumWindows.Call(enumWindowsCallback, uintptr(unsafe.Pointer(state)))
+	return state.foundHwnd
 }
 
 func FindWindowByTitleCached(title string) windows.HWND {
@@ -533,6 +552,8 @@ func ConfigurePopWindow(hwnd windows.HWND) {
 		0, 0, 0, 0,
 		uintptr(SwpNoMove|SwpNoSize|SwpNoActivate|SwpFrameChanged|SwpShowWindow),
 	)
+
+	ProcShowWindow.Call(uintptr(hwnd), SwShowNoActivate)
 }
 
 func SetOverlayBoundsBelow(hwnd windows.HWND, below windows.HWND, x, y, width, height int) {

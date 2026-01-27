@@ -26,6 +26,7 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
+	"golang.org/x/sys/windows"
 )
 
 const (
@@ -67,6 +68,11 @@ type Window struct {
 	AcceptBtn  widget.Clickable
 	RejectBtn  widget.Clickable
 	OnAccept   func(url, mimeType string)
+
+	// Window positioning (applied on first frame)
+	InitialX   int
+	InitialY   int
+	Configured bool
 }
 
 func ClampHeight(height int) int {
@@ -295,13 +301,32 @@ func Initialize(popup *Window, title string, width, height int, placementManager
 	popup.GioWindow.Option(app.Size(unit.Dp(width), unit.Dp(height)))
 	popup.GioWindow.Option(app.Decorated(true))
 
-	go func() {
-		time.Sleep(50 * time.Millisecond)
-		wnd := window.FindWindowByTitleCached(title)
+	popup.InitialX = x
+	popup.InitialY = y
+	popup.Configured = false
 
-		if wnd == 0 {
-			time.Sleep(50 * time.Millisecond)
+	placementManager.ClearOldWindows(window.MaxWindowsOnScreen)
+
+	return nil
+}
+
+func ConfigureOnFirstFrame(popup *Window) {
+	if popup.Configured {
+		return
+	}
+	popup.Configured = true
+
+	go func() {
+		title := popup.Title
+		x, y := popup.InitialX, popup.InitialY
+
+		var wnd windows.HWND
+		for i := 0; i < 10; i++ {
 			wnd = window.FindWindowByTitleCached(title)
+			if wnd != 0 {
+				break
+			}
+			time.Sleep(20 * time.Millisecond)
 		}
 
 		if wnd != 0 {
@@ -309,11 +334,7 @@ func Initialize(popup *Window, title string, width, height int, placementManager
 			window.SetPopupWindowPositionByHandle(wnd, x, y)
 			window.ClampWindowToWorkArea(wnd)
 		} else {
-			log.Printf("Failed to find window '%s' after retries", title)
+			log.Printf("Failed to find window '%s' for configuration", title)
 		}
 	}()
-
-	placementManager.ClearOldWindows(window.MaxWindowsOnScreen)
-
-	return nil
 }

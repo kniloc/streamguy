@@ -126,6 +126,7 @@ func main() {
 				time.Sleep(250 * time.Millisecond)
 				hwnd := window.FindWindowByTitleCached(ControlPanelTitle)
 				if hwnd != 0 {
+					overlay.SetControlPanelHwnd(hwnd)
 					window.SetWindowTopmost(hwnd)
 					overlayHwnd := window.FindWindowByTitleCached(overlay.WindowTitle)
 					if overlayHwnd != 0 {
