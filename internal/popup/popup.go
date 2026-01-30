@@ -69,10 +69,10 @@ type Window struct {
 	RejectBtn  widget.Clickable
 	OnAccept   func(url, mimeType string)
 
-	// Window positioning (applied on first frame)
-	InitialX   int
-	InitialY   int
-	Configured bool
+	// Window positioning
+	InitialX int
+	InitialY int
+	HWND     windows.HWND
 }
 
 func ClampHeight(height int) int {
@@ -303,38 +303,22 @@ func Initialize(popup *Window, title string, width, height int, placementManager
 
 	popup.InitialX = x
 	popup.InitialY = y
-	popup.Configured = false
 
 	placementManager.ClearOldWindows(window.MaxWindowsOnScreen)
 
 	return nil
 }
 
-func ConfigureOnFirstFrame(popup *Window) {
-	if popup.Configured {
+func ConfigureFromViewEvent(popup *Window, hwnd windows.HWND) {
+	if popup.HWND != 0 {
 		return
 	}
-	popup.Configured = true
+	popup.HWND = hwnd
 
 	go func() {
-		title := popup.Title
-		x, y := popup.InitialX, popup.InitialY
-
-		var wnd windows.HWND
-		for i := 0; i < 10; i++ {
-			wnd = window.FindWindowByTitleCached(title)
-			if wnd != 0 {
-				break
-			}
-			time.Sleep(20 * time.Millisecond)
-		}
-
-		if wnd != 0 {
-			window.ConfigurePopWindow(wnd)
-			window.SetPopupWindowPositionByHandle(wnd, x, y)
-			window.ClampWindowToWorkArea(wnd)
-		} else {
-			log.Printf("Failed to find window '%s' for configuration", title)
-		}
+		time.Sleep(10 * time.Millisecond)
+		window.ConfigurePopWindow(hwnd)
+		window.SetPopupWindowPositionByHandle(hwnd, popup.InitialX, popup.InitialY)
+		window.ClampWindowToWorkArea(hwnd)
 	}()
 }

@@ -26,6 +26,7 @@ import (
 	"stream-guy/internal/window"
 
 	"gioui.org/io/system"
+	"golang.org/x/sys/windows"
 )
 
 type Service struct {
@@ -216,7 +217,6 @@ func (s *Service) runPhotoPopup(pw *Window, th *material.Theme) error {
 	var ops op.Ops
 
 	defer func() {
-		window.CleanupWindowHandle(pw.Title)
 		if s.WindowRegistry != nil {
 			s.WindowRegistry.Unregister(pw.GioWindow)
 		}
@@ -225,13 +225,16 @@ func (s *Service) runPhotoPopup(pw *Window, th *material.Theme) error {
 	for {
 		e := pw.GioWindow.Event()
 		switch ev := e.(type) {
+		case app.Win32ViewEvent:
+			if ev.Valid() {
+				ConfigureFromViewEvent(pw, windows.HWND(ev.HWND))
+			}
+
 		case app.DestroyEvent:
 			return ev.Err
 
 		case app.FrameEvent:
 			gtx := app.NewContext(&ops, ev)
-
-			ConfigureOnFirstFrame(pw)
 
 			if pw.AcceptBtn.Clicked(gtx) {
 				if pw.OnAccept != nil {
@@ -356,7 +359,6 @@ func (s *Service) runChatPopup(pw *Window, th *material.Theme) error {
 	resized := false
 
 	defer func() {
-		window.CleanupWindowHandle(pw.Title)
 		if s.EmoteManager != nil {
 			s.EmoteManager.UnregisterWindow(pw.GioWindow)
 		}
@@ -371,13 +373,16 @@ func (s *Service) runChatPopup(pw *Window, th *material.Theme) error {
 	for {
 		e := pw.GioWindow.Event()
 		switch ev := e.(type) {
+		case app.Win32ViewEvent:
+			if ev.Valid() {
+				ConfigureFromViewEvent(pw, windows.HWND(ev.HWND))
+			}
+
 		case app.DestroyEvent:
 			return ev.Err
 
 		case app.FrameEvent:
 			gtx := app.NewContext(&ops, ev)
-
-			ConfigureOnFirstFrame(pw)
 
 			HandleContextMenuEvents(gtx, pw)
 			HandleCopyButton(gtx, pw)
@@ -402,7 +407,6 @@ func (s *Service) runGifPopup(pw *Window, gifData *gif.GIF) error {
 	var ops op.Ops
 
 	defer func() {
-		window.CleanupWindowHandle(pw.Title)
 		if s.WindowRegistry != nil {
 			s.WindowRegistry.Unregister(pw.GioWindow)
 		}
@@ -420,13 +424,16 @@ func (s *Service) runGifPopup(pw *Window, gifData *gif.GIF) error {
 	for {
 		e := pw.GioWindow.Event()
 		switch ev := e.(type) {
+		case app.Win32ViewEvent:
+			if ev.Valid() {
+				ConfigureFromViewEvent(pw, windows.HWND(ev.HWND))
+			}
+
 		case app.DestroyEvent:
 			return ev.Err
 
 		case app.FrameEvent:
 			gtx := app.NewContext(&ops, ev)
-
-			ConfigureOnFirstFrame(pw)
 
 			layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				if hasGif {
@@ -452,13 +459,12 @@ func (s *Service) resizeWindowToContent(gtx layout.Context, pw *Window, th *mate
 	desiredHeight := ClampHeight(dims.Size.Y + 10)
 	pw.GioWindow.Option(app.Size(unit.Dp(DefaultWindowWidth), unit.Dp(desiredHeight)))
 
-	go func(title string) {
-		time.Sleep(50 * time.Millisecond)
-		wnd := window.FindWindowByTitleCached(title)
-		if wnd != 0 {
-			window.ClampWindowToWorkArea(wnd)
-		}
-	}(pw.Title)
+	if pw.HWND != 0 {
+		go func(hwnd windows.HWND) {
+			time.Sleep(50 * time.Millisecond)
+			window.ClampWindowToWorkArea(hwnd)
+		}(pw.HWND)
+	}
 
 	return true
 }

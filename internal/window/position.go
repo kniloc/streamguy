@@ -28,18 +28,8 @@ var (
 	ProcMonitorFromWindow    = User32.NewProc("MonitorFromWindow")
 	ProcGetMonitorInfo       = User32.NewProc("GetMonitorInfoW")
 	ProcIsWindow             = User32.NewProc("IsWindow")
-	ProcCreateWindowEx       = User32.NewProc("CreateWindowExW")
-	ProcRegisterClass        = User32.NewProc("RegisterClassW")
-	ProcDefWindowProc        = User32.NewProc("DefWindowProcW")
+	ProcIsIconic             = User32.NewProc("IsIconic")
 	ProcShowWindow           = User32.NewProc("ShowWindow")
-
-	Kernel32            = windows.NewLazySystemDLL("kernel32.dll")
-	ProcGetModuleHandle = Kernel32.NewProc("GetModuleHandleW")
-)
-
-var (
-	popupOwnerHWND     windows.HWND
-	popupOwnerInitOnce sync.Once
 )
 
 const (
@@ -54,17 +44,14 @@ const (
 	MonitorDefaultToPrimary = 0x00000001
 
 	SwShowNoActivate = 4
+	SwRestore        = 9
 )
 
 const (
-	GwlpHwndParent = ^uintptr(7)
-	GwlExstyle     = ^uintptr(19)
+	GwlExstyle = ^uintptr(19)
 
 	WsExToolWindow = 0x00000080
 	WsExAppWindow  = 0x00040000
-
-	HwndMessageOnly = ^uintptr(2) // HWND_MESSAGE (-3)
-	WsPopup         = 0x80000000
 )
 
 type WNDCLASS struct {
@@ -78,36 +65,6 @@ type WNDCLASS struct {
 	HbrBackground uintptr
 	LpszMenuName  *uint16
 	LpszClassName *uint16
-}
-
-func getPopupOwnerHWND() windows.HWND {
-	popupOwnerInitOnce.Do(func() {
-		className, _ := windows.UTF16PtrFromString("StreamGuyPopupOwner")
-
-		hInstance, _, _ := ProcGetModuleHandle.Call(0)
-
-		wc := WNDCLASS{
-			LpfnWndProc:   ProcDefWindowProc.Addr(),
-			HInstance:     hInstance,
-			LpszClassName: className,
-		}
-
-		ProcRegisterClass.Call(uintptr(unsafe.Pointer(&wc)))
-
-		hwnd, _, _ := ProcCreateWindowEx.Call(
-			0,
-			uintptr(unsafe.Pointer(className)),
-			0,
-			uintptr(WsPopup),
-			0, 0, 0, 0,
-			HwndMessageOnly,
-			0,
-			hInstance,
-			0,
-		)
-		popupOwnerHWND = windows.HWND(hwnd)
-	})
-	return popupOwnerHWND
 }
 
 type RECT struct {
@@ -510,25 +467,22 @@ func FindWindowByTitleCached(title string) windows.HWND {
 	return hwnd
 }
 
-func CleanupWindowHandle(title string) {
-	GlobalHandleCache.Remove(title)
-}
-
 func SetPopupWindowPositionByHandle(wnd windows.HWND, x, y int) {
 	if wnd == 0 {
 		log.Printf("Invalid window handle\n")
 		return
 	}
 
+	// Move to position (no z-order change here)
 	ret, _, err := ProcSetWindowPos.Call(
 		uintptr(wnd),
-		^uintptr(0),
+		0,
 		uintptr(x), uintptr(y), 0, 0,
-		uintptr(SwpNoSize|SwpNoZOrder|SwpNoActivate|SwpShowWindow),
+		uintptr(SwpNoSize|SwpNoZOrder|SwpNoActivate),
 	)
 
 	if ret == 0 {
-		log.Printf("SetWindowPos failed: %v\n", err)
+		log.Printf("SetWindowPos (move) failed: %v\n", err)
 	}
 }
 
@@ -537,22 +491,26 @@ func ConfigurePopWindow(hwnd windows.HWND) {
 		return
 	}
 
-	owner := getPopupOwnerHWND()
-	ProcSetWindowLongPtr.Call(uintptr(hwnd), GwlpHwndParent, uintptr(owner))
-
+	// Set extended styles: toolwindow (no taskbar/alt-tab), remove app window style
 	ex, _, _ := ProcGetWindowLongPtr.Call(uintptr(hwnd), GwlExstyle)
 	ex |= WsExToolWindow
 	ex &^= WsExAppWindow
 	ProcSetWindowLongPtr.Call(uintptr(hwnd), GwlExstyle, ex)
 
+	// Restore if minimized (can happen if created while control panel is minimized)
+	iconic, _, _ := ProcIsIconic.Call(uintptr(hwnd))
+	if iconic != 0 {
+		ProcShowWindow.Call(uintptr(hwnd), SwRestore)
+	}
+
+	// Show without activating, then set topmost z-order
+	ProcShowWindow.Call(uintptr(hwnd), SwShowNoActivate)
 	ProcSetWindowPos.Call(
 		uintptr(hwnd),
-		^uintptr(0),
+		^uintptr(0), // HWND_TOPMOST
 		0, 0, 0, 0,
 		uintptr(SwpNoMove|SwpNoSize|SwpNoActivate|SwpFrameChanged|SwpShowWindow),
 	)
-
-	ProcShowWindow.Call(uintptr(hwnd), SwShowNoActivate)
 }
 
 func SetOverlayBoundsBelow(hwnd windows.HWND, below windows.HWND, x, y, width, height int) {
