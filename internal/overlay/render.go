@@ -25,6 +25,15 @@ func (o *Window) ClearStrokes() {
 	o.pendingClear.Store(false)
 }
 
+func (o *Window) UndoLastStroke() {
+	if o.StrokeCount == 0 {
+		return
+	}
+	o.StrokeCount--
+	idx := (o.StrokeStart + o.StrokeCount) % len(o.Strokes)
+	o.Strokes[idx] = Stroke{}
+}
+
 func (o *Window) AppendStroke(s Stroke) {
 	if len(s.Points) == 0 || len(o.Strokes) == 0 {
 		return
@@ -85,9 +94,11 @@ func (o *Window) Redraw() {
 	clear(o.Buf)
 	drawMode := o.drawMode.Load()
 	bgA := byte(0)
+
 	if drawMode {
 		bgA = 0x10
 	}
+
 	if bgA != 0 {
 		for i := 3; i < len(o.Buf); i += 4 {
 			o.Buf[i] = bgA
@@ -141,6 +152,7 @@ func (o *Window) DrawRectBorder(x, y, w, h, thickness int, c color.NRGBA) {
 			o.SetPixelRaw(x+xx, y+t, c)
 			o.SetPixelRaw(x+xx, y+h-1-t, c)
 		}
+
 		for yy := range h {
 			o.SetPixelRaw(x+t, y+yy, c)
 			o.SetPixelRaw(x+w-1-t, y+yy, c)
@@ -159,10 +171,12 @@ func (o *Window) drawStrokeOrDot(points []Point, radius int, c color.NRGBA) {
 	if len(points) == 0 {
 		return
 	}
+
 	if len(points) == 1 {
 		o.DrawCircle(int(points[0].X), int(points[0].Y), radius, c)
 		return
 	}
+
 	o.drawStroke(points, radius, c)
 }
 

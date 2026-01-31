@@ -138,7 +138,25 @@ func wndProcFn(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr {
 		return 0
 	case WmRButtonDown:
 		if ow != nil && ow.drawMode.Load() {
+			ow.UndoLastStroke()
+			ow.Redraw()
+		}
+		return 0
+	case WmMButtonDown:
+		if ow != nil && ow.drawMode.Load() {
 			ow.ClearAndRedraw()
+		}
+		return 0
+	case WmMouseWheel:
+		if ow != nil && ow.drawMode.Load() {
+			delta := int16((wParam >> 16) & 0xFFFF)
+			if delta > 0 {
+				ow.SelectedColor = (ow.SelectedColor - 1 + len(Palette)) % len(Palette)
+			} else {
+				ow.SelectedColor = (ow.SelectedColor + 1) % len(Palette)
+			}
+			ow.CurrentColor = Palette[ow.SelectedColor]
+			ow.Redraw()
 		}
 		return 0
 	case WmLButtonUp:

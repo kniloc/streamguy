@@ -63,11 +63,8 @@ func (o *Window) HandleToolbarClick(p Point) bool {
 		o.ApplyClickThrough(true)
 		o.Redraw()
 		return true
-	case 1:
-		o.ClearAndRedraw()
-		return true
 	default:
-		paletteIdx := idx - 2
+		paletteIdx := idx - 1
 		if paletteIdx >= 0 && paletteIdx < len(Palette) {
 			o.SelectedColor = paletteIdx
 			o.CurrentColor = Palette[paletteIdx]
@@ -88,26 +85,17 @@ func (o *Window) DrawToolbar(selectedColor int) {
 	o.FillRect(offX, offY, bw, bh, color.NRGBA{R: 0xD0, G: 0x30, B: 0x30, A: 0xFF})
 	o.DrawX(offX+6, offY+6, bw-12, color.NRGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0xFF})
 
-	clrX, clrY, _, _ := ToolbarButtonRect(1)
-	o.FillRect(clrX, clrY, bw, bh, color.NRGBA{R: 0x30, G: 0x30, B: 0x30, A: 0xFF})
-	o.DrawRectBorder(clrX+7, clrY+8, bw-14, bh-14, 1, color.NRGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0xFF})
-	o.FillRect(clrX+10, clrY+18, bw-20, 3, color.NRGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0xFF})
-
 	for i, c := range Palette {
-		sx, sy, _, _ := ToolbarButtonRect(i + 2)
+		sx, sy, _, _ := ToolbarButtonRect(i + 1)
 		o.FillRect(sx, sy, bw, bh, c)
 		border := color.NRGBA{R: 0x00, G: 0x00, B: 0x00, A: 0xFF}
-		th := 1
+		borderWidth := 1
 
 		if i == selectedColor {
 			border = color.NRGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0xFF}
-			th = 2
-
-			if c == DefaultStrokeColor {
-				border = color.NRGBA{R: 0x80, G: 0x00, B: 0x80, A: 0xFF}
-			}
+			borderWidth = 2
 		}
 
-		o.DrawRectBorder(sx, sy, bw, bh, th, border)
+		o.DrawRectBorder(sx, sy, bw, bh, borderWidth, border)
 	}
 }

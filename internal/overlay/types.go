@@ -9,15 +9,16 @@ import (
 
 const WindowTitle = "Stream Guy Overlay"
 
-var DefaultStrokeColor = color.NRGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0xFF}
+var DefaultStrokeColor = color.NRGBA{R: 0xAC, G: 0x47, B: 0x38, A: 0xFF}
 
 var Palette = []color.NRGBA{
-	DefaultStrokeColor,
-	{R: 0xAC, G: 0x47, B: 0x38, A: 0xFF},
-	{R: 0xCC, G: 0x84, B: 0x00, A: 0xFF},
-	{R: 0xFF, G: 0xD0, B: 0x40, A: 0xFF},
-	{R: 0x20, G: 0x80, B: 0xD0, A: 0xFF},
-	{R: 0x96, G: 0x2C, B: 0xEA, A: 0xFF},
+	DefaultStrokeColor,                   // rust red
+	{R: 0xCC, G: 0x84, B: 0x00, A: 0xFF}, // amber orange
+	{R: 0x4A, G: 0x5D, B: 0x23, A: 0xFF}, // dark olive
+	{R: 0x2A, G: 0x9D, B: 0x8F, A: 0xFF}, // teal
+	{R: 0x00, G: 0x78, B: 0x99, A: 0xFF}, // deep cyan
+	{R: 0x94, G: 0x21, B: 0x6A, A: 0xFF}, // magenta
+	{R: 0x96, G: 0x2C, B: 0xEA, A: 0xFF}, // purple
 }
 
 const (
@@ -56,6 +57,8 @@ const (
 	WmLButtonDown = 0x0201
 	WmLButtonUp   = 0x0202
 	WmRButtonDown = 0x0204
+	WmMButtonDown = 0x0207
+	WmMouseWheel  = 0x020A
 	HtTransparent = ^uintptr(0)
 
 	idcCross = 32515
@@ -68,7 +71,7 @@ const (
 )
 
 var (
-	ToolbarBtnCount = 2 + len(Palette)
+	ToolbarBtnCount = 1 + len(Palette)
 	ToolbarW        = ToolbarPadding*2 + ToolbarBtnCount*ToolbarButton + (ToolbarBtnCount-1)*ToolbarGap
 	ToolbarH        = ToolbarPadding*2 + ToolbarButton
 )

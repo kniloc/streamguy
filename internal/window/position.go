@@ -497,13 +497,13 @@ func ConfigurePopWindow(hwnd windows.HWND) {
 	ex &^= WsExAppWindow
 	ProcSetWindowLongPtr.Call(uintptr(hwnd), GwlExstyle, ex)
 
-	// Restore if minimized (can happen if created while control panel is minimized)
+	// Restore if minimized (can happen if created while a control panel is minimized)
 	iconic, _, _ := ProcIsIconic.Call(uintptr(hwnd))
 	if iconic != 0 {
 		ProcShowWindow.Call(uintptr(hwnd), SwRestore)
 	}
 
-	// Show without activating, then set topmost z-order
+	// Show without activating, then set the topmost z-order
 	ProcShowWindow.Call(uintptr(hwnd), SwShowNoActivate)
 	ProcSetWindowPos.Call(
 		uintptr(hwnd),
