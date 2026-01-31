@@ -60,8 +60,7 @@ type App struct {
 	clearImagesBtn widget.Clickable
 
 	// Drawing Overlay
-	overlay        *overlay.Window
-	overlayDrawBtn widget.Clickable
+	overlay *overlay.Window
 }
 
 func (a *App) HandleChatMessage(data json.RawMessage, timestamp string) {

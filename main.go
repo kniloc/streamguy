@@ -115,6 +115,7 @@ func main() {
 			log.Printf("Overlay error: %v", err)
 		}
 	}()
+	go application.overlay.MonitorDoubleShift(application.ctx)
 
 	go func() {
 		w := new(app.Window)
@@ -176,10 +177,6 @@ func (a *App) buildControlPanelLayout(gtx layout.Context, th *material.Theme, ws
 		a.setPaused(!a.isPaused())
 	}
 
-	if a.overlayDrawBtn.Clicked(gtx) && a.overlay != nil {
-		a.overlay.ToggleDrawMode()
-	}
-
 	if a.clearImagesBtn.Clicked(gtx) {
 		a.piClient.ClearImages()
 	}
@@ -187,11 +184,6 @@ func (a *App) buildControlPanelLayout(gtx layout.Context, th *material.Theme, ws
 	pauseText := "Pause Popups"
 	if a.isPaused() {
 		pauseText = "Resume Popups"
-	}
-
-	drawText := "Drawing Guy: OFF"
-	if a.overlay != nil && a.overlay.DrawMode() {
-		drawText = "Drawing Guy: ON"
 	}
 
 	return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
@@ -227,10 +219,6 @@ func (a *App) buildControlPanelLayout(gtx layout.Context, th *material.Theme, ws
 				}),
 				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 					btn := material.Button(th, &a.pauseResumeBtn, pauseText)
-					return btn.Layout(gtx)
-				}),
-				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					btn := material.Button(th, &a.overlayDrawBtn, drawText)
 					return btn.Layout(gtx)
 				}),
 				layout.Rigid(func(gtx layout.Context) layout.Dimensions {

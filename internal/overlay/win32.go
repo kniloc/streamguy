@@ -26,6 +26,7 @@ var (
 	procDispatchMessageW = user32.NewProc("DispatchMessageW")
 	procPostQuitMessage  = user32.NewProc("PostQuitMessage")
 	procPostMessageW     = user32.NewProc("PostMessageW")
+	procGetAsyncKeyState = user32.NewProc("GetAsyncKeyState")
 
 	procGetDC               = user32.NewProc("GetDC")
 	procReleaseDC           = user32.NewProc("ReleaseDC")
@@ -65,6 +66,13 @@ func (o *Window) ToggleDrawMode() {
 	if o.pendingModeChange.CompareAndSwap(false, true) {
 		procPostMessageW.Call(uintptr(o.Hwnd), WmOverlayModeChange, 0, 0)
 	}
+}
+
+func (o *Window) EnableDrawMode() {
+	if o.drawMode.Load() {
+		return
+	}
+	o.ToggleDrawMode()
 }
 
 func (o *Window) Clear() {
