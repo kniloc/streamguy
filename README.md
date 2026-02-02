@@ -10,11 +10,11 @@ A Windows desktop application for Twitch streamers that displays interactive cha
 - **Photo Popups** - Display viewer-submitted images via channel point redemptions
 - **Drawing Overlay** - Transparent overlay for on-screen drawing (toggle with double-Shift)
 - **Raspberry Pi Integration** - Send accepted images to a Pi display
-- **PostgreSQL Support** - Optional database integration for features like TreeShaker turn tracking
+- **PostgreSQL Support** - Optional database integration
 
 ## Requirements
 
-- Windows 10/11
+- Windows 10+
 - Go 1.25+
 - [Streamer.bot](https://streamer.bot/) running with WebSocket server enabled
 
@@ -74,13 +74,13 @@ Press **Shift twice quickly** (double-tap) to toggle drawing mode. When enabled,
 
 ### Controls
 
-| Input | Action |
-|-------|--------|
-| Left-click + drag | Draw stroke |
-| Right-click | Undo last stroke |
-| Middle-click | Clear all strokes |
-| Scroll wheel | Cycle through colors |
-| Double-Shift | Exit drawing mode |
+| Input             | Action               |
+|-------------------|----------------------|
+| Left-click + drag | Draw stroke          |
+| Right-click       | Undo last stroke     |
+| Middle-click      | Clear all strokes    |
+| Scroll wheel      | Cycle through colors |
+| Double-Shift      | Exit drawing mode    |
 
 ## License
 
