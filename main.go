@@ -115,7 +115,7 @@ func main() {
 			log.Printf("Overlay error: %v", err)
 		}
 	}()
-	go application.overlay.MonitorDoubleShift(application.ctx)
+	go application.overlay.MonitorDrawModeHotkey(application.ctx)
 
 	go func() {
 		w := new(app.Window)

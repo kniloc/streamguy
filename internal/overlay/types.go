@@ -61,8 +61,9 @@ const (
 	WmMouseWheel  = 0x020A
 	HtTransparent = ^uintptr(0)
 
-	VkShift  = 0x10
-	idcCross = 32515
+	VkShift   = 0x10
+	VkControl = 0x11
+	idcCross  = 32515
 
 	ToolbarX       = 10
 	ToolbarY       = 10

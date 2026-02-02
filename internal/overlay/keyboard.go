@@ -10,9 +10,12 @@ func IsShiftPressed() bool {
 	return ret&0x8000 != 0
 }
 
-func (o *Window) MonitorDoubleShift(ctx context.Context) {
-	const maxInterval = 400 * time.Millisecond
-	var lastShiftRelease time.Time
+func IsControlPressed() bool {
+	ret, _, _ := procGetAsyncKeyState.Call(VkControl)
+	return ret&0x8000 != 0
+}
+
+func (o *Window) MonitorDrawModeHotkey(ctx context.Context) {
 	wasPressed := false
 
 	ticker := time.NewTicker(20 * time.Millisecond)
@@ -23,15 +26,9 @@ func (o *Window) MonitorDoubleShift(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			pressed := IsShiftPressed()
-			if wasPressed && !pressed {
-				now := time.Now()
-				if now.Sub(lastShiftRelease) < maxInterval {
-					o.EnableDrawMode()
-					lastShiftRelease = time.Time{}
-				} else {
-					lastShiftRelease = now
-				}
+			pressed := IsControlPressed() && IsShiftPressed()
+			if pressed && !wasPressed {
+				o.EnableDrawMode()
 			}
 			wasPressed = pressed
 		}

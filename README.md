@@ -70,7 +70,7 @@ go build -o stream-guy.exe .
 
 ## Drawing Overlay
 
-Press **Shift twice quickly** (double-tap) to toggle drawing mode. When enabled, a transparent overlay covers the screen for on-stream drawing.
+Press **Control+Shift** to toggle drawing mode. When enabled, a transparent overlay covers the screen for on-stream drawing.
 
 ### Controls
 
@@ -80,7 +80,7 @@ Press **Shift twice quickly** (double-tap) to toggle drawing mode. When enabled,
 | Right-click       | Undo last stroke     |
 | Middle-click      | Clear all strokes    |
 | Scroll wheel      | Cycle through colors |
-| Double-Shift      | Exit drawing mode    |
+| Control+Shift     | Toggle drawing mode  |
 
 ## License
 
