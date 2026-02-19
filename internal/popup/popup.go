@@ -61,6 +61,9 @@ type Window struct {
 	AnimCtx    context.Context
 	AnimCancel context.CancelFunc
 
+	// Command popup fields
+	CommandImage image.Image
+
 	// Photo popup fields
 	PhotoImage image.Image
 	PhotoURL   string

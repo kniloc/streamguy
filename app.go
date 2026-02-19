@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"regexp"
+	"stream-guy/internal/command"
 	"stream-guy/internal/render"
 	"stream-guy/internal/tts"
 	"strings"
@@ -42,10 +43,11 @@ type App struct {
 	loadedFontFace    font.FontFace
 
 	// Shared services
-	downloadPool *download.Pool
-	popupService *popup.Service
-	piClient     *pi.Client
-	dbPool       *pgxpool.Pool
+	downloadPool    *download.Pool
+	popupService    *popup.Service
+	piClient        *pi.Client
+	dbPool          *pgxpool.Pool
+	commandRegistry *command.Registry
 
 	// Lifetime
 	ctx          context.Context
@@ -58,6 +60,7 @@ type App struct {
 	clearAllBtn    widget.Clickable
 	pauseResumeBtn widget.Clickable
 	clearImagesBtn widget.Clickable
+	testPlateBtn   widget.Clickable
 
 	// Drawing Overlay
 	overlay *overlay.Window
@@ -73,12 +76,15 @@ func (a *App) HandleChatMessage(data json.RawMessage, timestamp string) {
 	username := msgData.User.DisplayName
 	message := strings.TrimSpace(msgData.Message.Message)
 	if strings.HasPrefix(message, "!") {
+		if a.commandRegistry != nil {
+			a.commandRegistry.Dispatch(message, username)
+		}
 		return
 	}
 	emotesTag := msgData.Message.Emotes
 	log.Printf("Chat: %s: %s", username, message)
 
-	userColor := streamerbot.ParseHexColor(msgData.User.Color)
+	userColor := assets.ParseHexColor(msgData.User.Color)
 
 	foundKeyword := a.findMatchingKeyword(message)
 	if foundKeyword != "" {
