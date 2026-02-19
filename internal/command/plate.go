@@ -100,7 +100,7 @@ func findMarkerRegions(img *image.RGBA) []image.Rectangle {
 	}
 	groups = append(groups, current)
 
-	// for each column group, find the vertical extent
+	// for each column group, find the vertical extent then inset to the interior
 	var regions []image.Rectangle
 	for _, group := range groups {
 		minX, maxX := group[0], group[len(group)-1]
@@ -118,22 +118,84 @@ func findMarkerRegions(img *image.RGBA) []image.Rectangle {
 				}
 			}
 		}
-		regions = append(regions, image.Rect(minX, minY, maxX+1, maxY+1))
+
+		// measure marker border thickness on each side
+		leftInset := 0
+		for x := minX; x <= maxX; x++ {
+			if !isMarker(img, x, (minY+maxY)/2) {
+				break
+			}
+			leftInset++
+		}
+		rightInset := 0
+		for x := maxX; x >= minX; x-- {
+			if !isMarker(img, x, (minY+maxY)/2) {
+				break
+			}
+			rightInset++
+		}
+		topInset := 0
+		for y := minY; y <= maxY; y++ {
+			if !isMarker(img, (minX+maxX)/2, y) {
+				break
+			}
+			topInset++
+		}
+		bottomInset := 0
+		for y := maxY; y >= minY; y-- {
+			if !isMarker(img, (minX+maxX)/2, y) {
+				break
+			}
+			bottomInset++
+		}
+
+		regions = append(regions, image.Rect(
+			minX+leftInset, minY+topInset,
+			maxX+1-rightInset, maxY+1-bottomInset,
+		))
 	}
 
 	return regions
 }
 
-func clearMarkers(img *image.RGBA, regions []image.Rectangle) {
-	for _, region := range regions {
-		for y := region.Min.Y; y < region.Max.Y; y++ {
-			for x := region.Min.X; x < region.Max.X; x++ {
-				if isMarker(img, x, y) {
-					img.Set(x, y, color.RGBA{A: 0})
+func clearMarkers(img *image.RGBA) {
+	bounds := img.Bounds()
+
+	// collect marker pixel positions
+	type pos struct{ x, y int }
+	var markers []pos
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			if isMarker(img, x, y) {
+				markers = append(markers, pos{x, y})
+			}
+		}
+	}
+
+	// replace each marker pixel with the nearest non-marker neighbor color
+	for _, p := range markers {
+		img.SetRGBA(p.x, p.y, nearestNonMarker(img, p.x, p.y))
+	}
+}
+
+func nearestNonMarker(img *image.RGBA, px, py int) color.RGBA {
+	bounds := img.Bounds()
+	for radius := 1; radius <= 10; radius++ {
+		for dy := -radius; dy <= radius; dy++ {
+			for dx := -radius; dx <= radius; dx++ {
+				if dx != -radius && dx != radius && dy != -radius && dy != radius {
+					continue
+				}
+				nx, ny := px+dx, py+dy
+				if nx >= bounds.Min.X && nx < bounds.Max.X && ny >= bounds.Min.Y && ny < bounds.Max.Y {
+					if !isMarker(img, nx, ny) {
+						return img.RGBAAt(nx, ny)
+					}
 				}
 			}
 		}
 	}
+	return color.RGBA{A: 255}
 }
 
 func GenerateLicensePlate(ctx Context) {
@@ -163,7 +225,7 @@ func GenerateLicensePlate(ctx Context) {
 		log.Printf("No marker region found in plate image for %s", selectedRegion)
 		return
 	}
-	clearMarkers(rgba, regions)
+	clearMarkers(rgba)
 
 	fontPath := filepath.Join(os.Getenv("LOCALAPPDATA"), "Microsoft", "Windows", "Fonts", "dealerplate california.otf")
 	fontData, err := os.ReadFile(fontPath)
@@ -181,40 +243,85 @@ func GenerateLicensePlate(ctx Context) {
 	// split text by spaces to distribute across regions
 	segments := strings.Split(plateText, " ")
 	if len(segments) < len(regions) {
-		// fewer segments than regions — render all text in first region
 		segments = []string{plateText}
 		regions = regions[:1]
 	} else if len(segments) > len(regions) {
-		// more segments than regions — join extras into the last region
 		joined := strings.Join(segments[len(regions)-1:], " ")
 		segments = append(segments[:len(regions)-1], joined)
 	}
 
 	for i, region := range regions {
-		fontSize := float64(region.Dy())
-		face, fErr := opentype.NewFace(parsedFont, &opentype.FaceOptions{
-			Size:    fontSize,
-			DPI:     72,
-			Hinting: font.HintingFull,
-		})
-		if fErr != nil {
-			log.Printf("Failed to create font face: %v", fErr)
-			return
+		lo, hi := 1.0, float64(region.Dy())
+		var bestFace font.Face
+		for lo+0.5 < hi {
+			mid := (lo + hi) / 2
+			f, fErr := opentype.NewFace(parsedFont, &opentype.FaceOptions{
+				Size:    mid,
+				DPI:     72,
+				Hinting: font.HintingFull,
+			})
+			if fErr != nil {
+				log.Printf("Failed to create font face: %v", fErr)
+				return
+			}
+			tw := font.MeasureString(f, segments[i])
+			var gTop, gBot fixed.Int26_6
+			for _, ch := range segments[i] {
+				b, _, ok := f.GlyphBounds(ch)
+				if ok {
+					if b.Min.Y < gTop {
+						gTop = b.Min.Y
+					}
+					if b.Max.Y > gBot {
+						gBot = b.Max.Y
+					}
+				}
+			}
+			textH := gBot - gTop
+			if tw.Ceil() <= region.Dx() && textH.Ceil() <= region.Dy() {
+				lo = mid
+				if bestFace != nil {
+					bestFace.Close()
+				}
+				bestFace = f
+			} else {
+				f.Close()
+				hi = mid
+			}
+		}
+		if bestFace == nil {
+			continue
 		}
 
-		metrics := face.Metrics()
-		textWidth := font.MeasureString(face, segments[i])
+		textWidth := font.MeasureString(bestFace, segments[i])
+
+		// measure actual glyph bounds for accurate vertical centering
+		var glyphTop, glyphBottom fixed.Int26_6
+		for _, ch := range segments[i] {
+			b, _, ok := bestFace.GlyphBounds(ch)
+			if !ok {
+				continue
+			}
+			if b.Min.Y < glyphTop {
+				glyphTop = b.Min.Y
+			}
+			if b.Max.Y > glyphBottom {
+				glyphBottom = b.Max.Y
+			}
+		}
+		glyphH := glyphBottom - glyphTop
+
 		x := fixed.I(region.Min.X) + (fixed.I(region.Dx())-textWidth)/2
-		y := fixed.I(region.Min.Y) + (fixed.I(region.Dy())+metrics.Ascent-metrics.Descent)/2
+		y := fixed.I(region.Min.Y) + (fixed.I(region.Dy())-glyphH)/2 - glyphTop
 
 		drawer := &font.Drawer{
 			Dst:  rgba,
 			Src:  image.NewUniform(textColor),
-			Face: face,
+			Face: bestFace,
 			Dot:  fixed.Point26_6{X: x, Y: y},
 		}
 		drawer.DrawString(segments[i])
-		face.Close()
+		bestFace.Close()
 	}
 
 	ctx.Respond("", rgba)
