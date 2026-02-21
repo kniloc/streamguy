@@ -100,6 +100,7 @@ func NewApp() *App {
 		}
 	})
 	application.commandRegistry.RegisterHandler("plate", command.GenerateLicensePlate)
+	application.plateRegions = append([]string{"Random"}, command.PlateRegions()...)
 
 	application.streamerBotClient = streamerbot.NewClient(application, application.config.StreamerbotHost, application.config.StreamerbotPort)
 
@@ -196,8 +197,19 @@ func (a *App) buildControlPanelLayout(gtx layout.Context, th *material.Theme, ws
 		a.piClient.ClearImages()
 	}
 
+	if a.platePrevBtn.Clicked(gtx) {
+		a.plateRegionIdx = (a.plateRegionIdx - 1 + len(a.plateRegions)) % len(a.plateRegions)
+	}
+	if a.plateNextBtn.Clicked(gtx) {
+		a.plateRegionIdx = (a.plateRegionIdx + 1) % len(a.plateRegions)
+	}
 	if a.testPlateBtn.Clicked(gtx) {
-		a.commandRegistry.Dispatch("!plate", "colin-test")
+		region := a.plateRegions[a.plateRegionIdx]
+		if region == "Random" {
+			a.commandRegistry.Dispatch("!plate", "colin-test")
+		} else {
+			a.commandRegistry.Dispatch("!plate "+region, "colin-test")
+		}
 	}
 
 	pauseText := "Pause Popups"
@@ -245,8 +257,29 @@ func (a *App) buildControlPanelLayout(gtx layout.Context, th *material.Theme, ws
 					return btn.Layout(gtx)
 				}),
 				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					btn := material.Button(th, &a.testPlateBtn, "Test Plate")
-					return btn.Layout(gtx)
+					return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Middle}.Layout(gtx,
+						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+							btn := material.Button(th, &a.platePrevBtn, "<")
+							btn.Inset = layout.UniformInset(unit.Dp(4))
+							return btn.Layout(gtx)
+						}),
+						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+							lbl := material.Body2(th, a.plateRegions[a.plateRegionIdx])
+							lbl.Alignment = text.Middle
+							return layout.Inset{Left: unit.Dp(4), Right: unit.Dp(4)}.Layout(gtx, lbl.Layout)
+						}),
+						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+							btn := material.Button(th, &a.plateNextBtn, ">")
+							btn.Inset = layout.UniformInset(unit.Dp(4))
+							return btn.Layout(gtx)
+						}),
+						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+							return layout.Inset{Left: unit.Dp(4)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+								btn := material.Button(th, &a.testPlateBtn, "Test")
+								return btn.Layout(gtx)
+							})
+						}),
+					)
 				}),
 			)
 		}),

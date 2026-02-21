@@ -18,12 +18,18 @@ import (
 	"golang.org/x/image/math/fixed"
 )
 
-func pickRandomRegion() string {
+func PlateRegions() []string {
 	keys := make([]string, 0, len(plateConfigs))
 	for k := range plateConfigs {
 		keys = append(keys, k)
 	}
-	return keys[rand.Intn(len(keys))]
+	sort.Strings(keys)
+	return keys
+}
+
+func pickRandomRegion() string {
+	regions := PlateRegions()
+	return regions[rand.Intn(len(regions))]
 }
 
 func generateFormattedNumber(region string) string {
@@ -199,7 +205,10 @@ func nearestNonMarker(img *image.RGBA, px, py int) color.RGBA {
 }
 
 func GenerateLicensePlate(ctx Context) {
-	selectedRegion := pickRandomRegion()
+	selectedRegion := strings.ToUpper(strings.TrimSpace(ctx.Args))
+	if _, ok := plateConfigs[selectedRegion]; !ok {
+		selectedRegion = pickRandomRegion()
+	}
 	plateText := generateFormattedNumber(selectedRegion)
 	textColor := parseHexColor(plateConfigs[selectedRegion].Color)
 

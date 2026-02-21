@@ -62,6 +62,12 @@ type App struct {
 	clearImagesBtn widget.Clickable
 	testPlateBtn   widget.Clickable
 
+	// Plate region selector
+	plateRegions   []string
+	plateRegionIdx int
+	platePrevBtn   widget.Clickable
+	plateNextBtn   widget.Clickable
+
 	// Drawing Overlay
 	overlay *overlay.Window
 }

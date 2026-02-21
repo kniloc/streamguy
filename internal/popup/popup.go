@@ -312,16 +312,41 @@ func Initialize(popup *Window, title string, width, height int, placementManager
 	return nil
 }
 
+var (
+	configMu         sync.Mutex
+	configSeqCounter int64
+	latestConfigSeq  int64
+	latestConfigHWND windows.HWND
+)
+
 func ConfigureFromViewEvent(popup *Window, hwnd windows.HWND) {
 	if popup.HWND != 0 {
 		return
 	}
 	popup.HWND = hwnd
 
+	configMu.Lock()
+	configSeqCounter++
+	seq := configSeqCounter
+	configMu.Unlock()
+
 	go func() {
 		time.Sleep(10 * time.Millisecond)
+		configMu.Lock()
+		defer configMu.Unlock()
+
 		window.ConfigurePopWindow(hwnd)
 		window.SetPopupWindowPositionByHandle(hwnd, popup.InitialX, popup.InitialY)
 		window.ClampWindowToWorkArea(hwnd)
+
+		if seq >= latestConfigSeq {
+			latestConfigSeq = seq
+			latestConfigHWND = hwnd
+		}
+		// Always re-assert the newest popup on top after all
+		// position changes are complete.
+		if latestConfigHWND != 0 {
+			window.SetWindowTopmost(latestConfigHWND)
+		}
 	}()
 }
