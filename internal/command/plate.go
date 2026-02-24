@@ -207,10 +207,7 @@ func nearestNonMarker(img *image.RGBA, px, py int) color.RGBA {
 }
 
 func GenerateLicensePlate(ctx Context) {
-	selectedRegion := strings.ToUpper(strings.TrimSpace(ctx.Args))
-	if _, ok := plateConfigs[selectedRegion]; !ok {
-		selectedRegion = pickRandomRegion()
-	}
+	selectedRegion := pickRandomRegion()
 	plateText := generateFormattedNumber(selectedRegion)
 	textColor := parseHexColor(plateConfigs[selectedRegion].Color)
 
