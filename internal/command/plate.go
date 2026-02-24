@@ -6,6 +6,7 @@ import (
 	"image/draw"
 	"image/png"
 	"log"
+	"math"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 
+	xdraw "golang.org/x/image/draw"
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/opentype"
 	"golang.org/x/image/math/fixed"
@@ -260,54 +262,23 @@ func GenerateLicensePlate(ctx Context) {
 	}
 
 	for i, region := range regions {
-		lo, hi := 1.0, float64(region.Dy())
-		var bestFace font.Face
-		for lo+0.5 < hi {
-			mid := (lo + hi) / 2
-			f, fErr := opentype.NewFace(parsedFont, &opentype.FaceOptions{
-				Size:    mid,
-				DPI:     72,
-				Hinting: font.HintingFull,
-			})
-			if fErr != nil {
-				log.Printf("Failed to create font face: %v", fErr)
-				return
-			}
-			tw := font.MeasureString(f, segments[i])
-			var gTop, gBot fixed.Int26_6
-			for _, ch := range segments[i] {
-				b, _, ok := f.GlyphBounds(ch)
-				if ok {
-					if b.Min.Y < gTop {
-						gTop = b.Min.Y
-					}
-					if b.Max.Y > gBot {
-						gBot = b.Max.Y
-					}
-				}
-			}
-			textH := gBot - gTop
-			if tw.Ceil() <= region.Dx() && textH.Ceil() <= region.Dy() {
-				lo = mid
-				if bestFace != nil {
-					bestFace.Close()
-				}
-				bestFace = f
-			} else {
-				f.Close()
-				hi = mid
-			}
-		}
-		if bestFace == nil {
-			continue
+		// render text at a large size, then stretch to fill the region
+		renderSize := math.Max(float64(region.Dy())*2, 200)
+		face, fErr := opentype.NewFace(parsedFont, &opentype.FaceOptions{
+			Size:    renderSize,
+			DPI:     72,
+			Hinting: font.HintingFull,
+		})
+		if fErr != nil {
+			log.Printf("Failed to create font face: %v", fErr)
+			return
 		}
 
-		textWidth := font.MeasureString(bestFace, segments[i])
+		tw := font.MeasureString(face, segments[i])
 
-		// measure actual glyph bounds for accurate vertical centering
 		var glyphTop, glyphBottom fixed.Int26_6
 		for _, ch := range segments[i] {
-			b, _, ok := bestFace.GlyphBounds(ch)
+			b, _, ok := face.GlyphBounds(ch)
 			if !ok {
 				continue
 			}
@@ -318,19 +289,22 @@ func GenerateLicensePlate(ctx Context) {
 				glyphBottom = b.Max.Y
 			}
 		}
-		glyphH := glyphBottom - glyphTop
+		glyphH := (glyphBottom - glyphTop).Ceil()
+		textW := tw.Ceil()
 
-		x := fixed.I(region.Min.X) + (fixed.I(region.Dx())-textWidth)/2
-		y := fixed.I(region.Min.Y) + (fixed.I(region.Dy())-glyphH)/2 - glyphTop
-
+		// draw text onto a tight temporary image
+		tmp := image.NewRGBA(image.Rect(0, 0, textW, glyphH))
 		drawer := &font.Drawer{
-			Dst:  rgba,
+			Dst:  tmp,
 			Src:  image.NewUniform(textColor),
-			Face: bestFace,
-			Dot:  fixed.Point26_6{X: x, Y: y},
+			Face: face,
+			Dot:  fixed.Point26_6{X: 0, Y: -glyphTop},
 		}
 		drawer.DrawString(segments[i])
-		bestFace.Close()
+		face.Close()
+
+		// scale the temporary image to fill the entire marker region
+		xdraw.BiLinear.Scale(rgba, region, tmp, tmp.Bounds(), xdraw.Over, nil)
 	}
 
 	ctx.Respond("", rgba)
