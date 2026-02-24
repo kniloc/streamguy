@@ -563,6 +563,7 @@ func (s *Service) resizeWindowToContent(gtx layout.Context, pw *Window, th *mate
 		go func(hwnd windows.HWND) {
 			time.Sleep(50 * time.Millisecond)
 			window.ClampWindowToWorkArea(hwnd)
+			window.SetWindowTopmost(hwnd)
 		}(pw.HWND)
 	}
 

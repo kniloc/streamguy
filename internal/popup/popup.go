@@ -324,6 +324,7 @@ func ConfigureFromViewEvent(popup *Window, hwnd windows.HWND) {
 		return
 	}
 	popup.HWND = hwnd
+	scheduleTopmostReassert(hwnd)
 
 	configMu.Lock()
 	configSeqCounter++
@@ -347,6 +348,22 @@ func ConfigureFromViewEvent(popup *Window, hwnd windows.HWND) {
 		// position changes are complete.
 		if latestConfigHWND != 0 {
 			window.SetWindowTopmost(latestConfigHWND)
+		}
+	}()
+}
+
+func scheduleTopmostReassert(hwnd windows.HWND) {
+	if hwnd == 0 {
+		return
+	}
+
+	go func() {
+		for i := 0; i < 5; i++ {
+			time.Sleep(30 * time.Millisecond)
+			if !window.IsWindowValid(hwnd) {
+				return
+			}
+			window.SetWindowTopmost(hwnd)
 		}
 	}()
 }

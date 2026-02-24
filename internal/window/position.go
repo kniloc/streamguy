@@ -33,13 +33,14 @@ var (
 )
 
 const (
-	SwpNoSize       = 0x0001
-	SwpNoMove       = 0x0002
-	SwpNoZOrder     = 0x0004
-	SwpNoActivate   = 0x0010
-	SwpFrameChanged = 0x0020
-	SpiGetWorkArea  = 0x0030
-	SwpShowWindow   = 0x0040
+	SwpNoSize        = 0x0001
+	SwpNoMove        = 0x0002
+	SwpNoZOrder      = 0x0004
+	SwpNoActivate    = 0x0010
+	SwpFrameChanged  = 0x0020
+	SpiGetWorkArea   = 0x0030
+	SwpShowWindow    = 0x0040
+	SwpNoOwnerZOrder = 0x0200
 
 	MonitorDefaultToPrimary = 0x00000001
 
@@ -509,7 +510,7 @@ func ConfigurePopWindow(hwnd windows.HWND) {
 		uintptr(hwnd),
 		^uintptr(0), // HWND_TOPMOST
 		0, 0, 0, 0,
-		uintptr(SwpNoMove|SwpNoSize|SwpNoActivate|SwpFrameChanged|SwpShowWindow),
+		uintptr(SwpNoMove|SwpNoSize|SwpNoActivate|SwpFrameChanged|SwpNoOwnerZOrder|SwpShowWindow),
 	)
 }
 
@@ -538,7 +539,7 @@ func SetWindowTopmost(hwnd windows.HWND) {
 		uintptr(hwnd),
 		^uintptr(0),
 		0, 0, 0, 0,
-		uintptr(SwpNoMove|SwpNoSize|SwpNoActivate|SwpShowWindow),
+		uintptr(SwpNoMove|SwpNoSize|SwpNoActivate|SwpNoOwnerZOrder|SwpShowWindow),
 	)
 	if ret == 0 {
 		log.Printf("SetWindowPos (topmost) failed: %v", err)
