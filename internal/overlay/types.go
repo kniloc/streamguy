@@ -4,21 +4,23 @@ import (
 	"image/color"
 	"sync/atomic"
 
+	"stream-guy/internal/assets"
+
 	"golang.org/x/sys/windows"
 )
 
 const WindowTitle = "Stream Guy Overlay"
 
-var DefaultStrokeColor = color.NRGBA{R: 0xAC, G: 0x47, B: 0x38, A: 0xFF}
+var DefaultStrokeColor = assets.ParseHexColor("#AC4738")
 
 var Palette = []color.NRGBA{
-	DefaultStrokeColor,                   // rust red
-	{R: 0xCC, G: 0x84, B: 0x00, A: 0xFF}, // amber orange
-	{R: 0x4A, G: 0x5D, B: 0x23, A: 0xFF}, // dark olive
-	{R: 0x2A, G: 0x9D, B: 0x8F, A: 0xFF}, // teal
-	{R: 0x00, G: 0x78, B: 0x99, A: 0xFF}, // deep cyan
-	{R: 0x94, G: 0x21, B: 0x6A, A: 0xFF}, // magenta
-	{R: 0x96, G: 0x2C, B: 0xEA, A: 0xFF}, // purple
+	DefaultStrokeColor,              // rust red
+	assets.ParseHexColor("#CC8400"), // amber orange
+	assets.ParseHexColor("#4A5D23"), // dark olive
+	assets.ParseHexColor("#2A9D8F"), // teal
+	assets.ParseHexColor("#007899"), // deep cyan
+	assets.ParseHexColor("#94216A"), // magenta
+	assets.ParseHexColor("#962CEA"), // purple
 }
 
 const (
@@ -61,9 +63,8 @@ const (
 	WmMouseWheel  = 0x020A
 	HtTransparent = ^uintptr(0)
 
-	VkShift   = 0x10
-	VkControl = 0x11
-	idcCross  = 32515
+	VkAlt    = 0x12
+	idcCross = 32515
 
 	ToolbarX       = 10
 	ToolbarY       = 10

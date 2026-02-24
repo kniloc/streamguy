@@ -152,6 +152,48 @@ func (s *Service) CreateGifPopup(keyword string, message string) error {
 	return nil
 }
 
+func (s *Service) CreateCommandPopup(username string, message string, img image.Image) error {
+	if s.paused() {
+		return nil
+	}
+	if s.WindowRegistry == nil || s.PlacementManager == nil {
+		return fmt.Errorf("popup service not initialized")
+	}
+
+	width := DefaultWindowWidth
+	height := DefaultWindowHeight
+	if img != nil {
+		bounds := img.Bounds()
+		width = bounds.Dx() + 30
+		height = bounds.Dy() + 30
+	}
+
+	pw := &Window{
+		GioWindow:    new(app.Window),
+		Title:        time.Now().Format("2006-01-02 15:04:05.0"),
+		Username:     username,
+		Message:      message,
+		CommandImage: img,
+		StartTime:    time.Now(),
+	}
+
+	if err := Initialize(pw, pw.Title, width, height, s.PlacementManager); err != nil {
+		return fmt.Errorf("failed to initialize command popup window: %w", err)
+	}
+
+	s.WindowRegistry.Register(pw.GioWindow)
+
+	go func() {
+		pw.GioWindow.Invalidate()
+		th := s.themeWithFont()
+		if err := s.runCommandPopup(pw, th); err != nil {
+			log.Printf("Command popup error: %v", err)
+		}
+	}()
+
+	return nil
+}
+
 func (s *Service) CreatePhotoPopup(imageURL string, onAccept func(url, mimeType string)) error {
 	if s.paused() {
 		return nil
@@ -352,6 +394,64 @@ func (s *Service) prefetchAssets(segments []assets.EmoteSegment, badges []render
 			s.BadgeManager.Prefetch(b.ImageURL)
 		}
 	}
+}
+
+func (s *Service) runCommandPopup(pw *Window, th *material.Theme) error {
+	var ops op.Ops
+
+	defer func() {
+		if s.WindowRegistry != nil {
+			s.WindowRegistry.Unregister(pw.GioWindow)
+		}
+	}()
+
+	for {
+		e := pw.GioWindow.Event()
+		switch ev := e.(type) {
+		case app.Win32ViewEvent:
+			if ev.Valid() {
+				ConfigureFromViewEvent(pw, windows.HWND(ev.HWND))
+			}
+
+		case app.DestroyEvent:
+			return ev.Err
+
+		case app.FrameEvent:
+			gtx := app.NewContext(&ops, ev)
+			paint.Fill(gtx.Ops, render.SilverBackground)
+			s.renderCommandContent(gtx, pw, th)
+			ev.Frame(gtx.Ops)
+		}
+	}
+}
+
+func (s *Service) renderCommandContent(gtx layout.Context, pw *Window, th *material.Theme) layout.Dimensions {
+	return layout.UniformInset(unit.Dp(render.MessagePadding)).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+		return layout.Flex{
+			Axis:      layout.Vertical,
+			Alignment: layout.Middle,
+		}.Layout(gtx,
+			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+				if pw.CommandImage == nil {
+					return layout.Dimensions{}
+				}
+				bounds := pw.CommandImage.Bounds()
+				imgOp := paint.NewImageOp(pw.CommandImage)
+				imgOp.Filter = paint.FilterLinear
+				imgOp.Add(gtx.Ops)
+				defer clip.Rect{Max: bounds.Size()}.Push(gtx.Ops).Pop()
+				paint.PaintOp{}.Add(gtx.Ops)
+				return layout.Dimensions{Size: bounds.Size()}
+			}),
+			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+				if pw.Message == "" {
+					return layout.Dimensions{}
+				}
+				lbl := material.Body1(th, pw.Message)
+				return lbl.Layout(gtx)
+			}),
+		)
+	})
 }
 
 func (s *Service) runChatPopup(pw *Window, th *material.Theme) error {

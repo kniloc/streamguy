@@ -5,17 +5,14 @@ import (
 	"time"
 )
 
-func IsShiftPressed() bool {
-	ret, _, _ := procGetAsyncKeyState.Call(VkShift)
-	return ret&0x8000 != 0
-}
-
-func IsControlPressed() bool {
-	ret, _, _ := procGetAsyncKeyState.Call(VkControl)
+func IsAltPressed() bool {
+	ret, _, _ := procGetAsyncKeyState.Call(VkAlt)
 	return ret&0x8000 != 0
 }
 
 func (o *Window) MonitorDrawModeHotkey(ctx context.Context) {
+	maxInterval := 200 * time.Millisecond
+	var lastKeyRelease time.Time
 	wasPressed := false
 
 	ticker := time.NewTicker(20 * time.Millisecond)
@@ -26,9 +23,15 @@ func (o *Window) MonitorDrawModeHotkey(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			pressed := IsControlPressed() && IsShiftPressed()
-			if pressed && !wasPressed {
-				o.EnableDrawMode()
+			pressed := IsAltPressed()
+			if wasPressed && !pressed {
+				now := time.Now()
+				if now.Sub(lastKeyRelease) < maxInterval {
+					o.EnableDrawMode()
+					lastKeyRelease = time.Time{}
+				} else {
+					lastKeyRelease = now
+				}
 			}
 			wasPressed = pressed
 		}

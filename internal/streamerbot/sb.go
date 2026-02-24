@@ -5,11 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"image/color"
 	"log"
 	"net"
-	"strconv"
-	"strings"
 	"sync/atomic"
 	"time"
 
@@ -44,9 +41,6 @@ const (
 	SubscriptionID        = "stream-guy-sub"
 	TwitchChatEventName   = "Twitch.ChatMessage"
 	TwitchRewardEventName = "Twitch.RewardRedemption"
-
-	DefaultHexColorLength = 6
-	DefaultColorAlpha     = 255
 )
 
 func FormatTimeStamp(timestamp string) string {
@@ -238,22 +232,4 @@ func (c *Client) Start(ctx context.Context) {
 			return
 		}
 	}
-}
-
-func ParseHexColor(hexColor string) color.NRGBA {
-	defaultColor := color.NRGBA{R: 255, G: 255, B: 255, A: DefaultColorAlpha}
-	if hexColor == "" {
-		return defaultColor
-	}
-	hexColor = strings.TrimPrefix(hexColor, "#")
-	if len(hexColor) != DefaultHexColorLength {
-		return defaultColor
-	}
-	r, err1 := strconv.ParseUint(hexColor[0:2], 16, 8)
-	g, err2 := strconv.ParseUint(hexColor[2:4], 16, 8)
-	b, err3 := strconv.ParseUint(hexColor[4:6], 16, 8)
-	if err1 != nil || err2 != nil || err3 != nil {
-		return defaultColor
-	}
-	return color.NRGBA{R: uint8(r), G: uint8(g), B: uint8(b), A: DefaultColorAlpha}
 }

@@ -68,6 +68,12 @@ go build -o stream-guy.exe .
 - **Pause/Resume Popups** - Toggle popup creation
 - **Clear Images** - Clear images on connected Pi display
 
+## Chat Commands
+
+### `!plate`
+
+Generates a random license plate image from a random US state or Canadian province and displays it as a popup.
+
 ## Drawing Overlay
 
 Press **Control+Shift** to toggle drawing mode. When enabled, a transparent overlay covers the screen for on-stream drawing.

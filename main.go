@@ -3,11 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
+	"image"
 	"image/color"
 	"log"
 	"math/rand"
 	"os"
 	"runtime"
+	"stream-guy/internal/command"
 	"stream-guy/internal/tts"
 	"time"
 
@@ -85,6 +87,19 @@ func NewApp() *App {
 		IsPaused:         application.isPaused,
 		Keywords:         application.config.Keywords,
 	}
+
+	cmds := make(map[string]command.Command, len(application.config.Commands))
+	for name, c := range application.config.Commands {
+		cmds[name] = command.Command{Response: c.Response, Aliases: c.Aliases}
+	}
+	application.commandRegistry = command.NewRegistry(cmds, func(username, text string, img image.Image) {
+		if application.popupService != nil {
+			if psErr := application.popupService.CreateCommandPopup(username, text, img); psErr != nil {
+				log.Printf("Failed to create command popup: %v", psErr)
+			}
+		}
+	})
+	application.commandRegistry.RegisterHandler("plate", command.GenerateLicensePlate)
 
 	application.streamerBotClient = streamerbot.NewClient(application, application.config.StreamerbotHost, application.config.StreamerbotPort)
 

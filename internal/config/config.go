@@ -13,7 +13,13 @@ type Config struct {
 	StreamerbotPort string
 	PiURL           string
 	PostgresURL     string
-	Keywords        map[string]string `json:"keywords"`
+	Keywords        map[string]string  `json:"keywords"`
+	Commands        map[string]Command `json:"commands"`
+}
+
+type Command struct {
+	Response string   `json:"response"`
+	Aliases  []string `json:"aliases,omitempty"`
 }
 
 func LoadJSONFile[T any](filePath string, v *T) error {
@@ -35,6 +41,7 @@ func Load() *Config {
 
 	cfg := &Config{
 		Keywords: make(map[string]string),
+		Commands: make(map[string]Command),
 	}
 
 	if err := LoadJSONFile("config.json", cfg); err != nil {
