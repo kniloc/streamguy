@@ -4,6 +4,8 @@ import (
 	"image"
 	"log"
 	"strings"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Command struct {
@@ -14,9 +16,11 @@ type Command struct {
 type Context struct {
 	CommandName string
 	Args        string
+	UserID      string
 	Username    string
 	Response    string
 	Respond     func(text string, img image.Image)
+	DBPool      *pgxpool.Pool
 }
 
 type Handler func(ctx Context)
@@ -28,14 +32,16 @@ type Registry struct {
 	aliases    map[string]string
 	handlers   map[string]Handler
 	onResponse ResponseFunc
+	dbPool     *pgxpool.Pool
 }
 
-func NewRegistry(commands map[string]Command, onResponse ResponseFunc) *Registry {
+func NewRegistry(commands map[string]Command, dbPool *pgxpool.Pool, onResponse ResponseFunc) *Registry {
 	r := &Registry{
 		commands:   commands,
 		aliases:    make(map[string]string),
 		handlers:   make(map[string]Handler),
 		onResponse: onResponse,
+		dbPool:     dbPool,
 	}
 	for name, cmd := range commands {
 		for _, alias := range cmd.Aliases {
@@ -49,7 +55,7 @@ func (r *Registry) RegisterHandler(name string, handler Handler) {
 	r.handlers[name] = handler
 }
 
-func (r *Registry) Dispatch(message, username string) bool {
+func (r *Registry) Dispatch(message, userID, username string) bool {
 	message = strings.TrimSpace(message)
 	if !strings.HasPrefix(message, "!") {
 		return false
@@ -77,9 +83,11 @@ func (r *Registry) Dispatch(message, username string) bool {
 	ctx := Context{
 		CommandName: name,
 		Args:        strings.TrimSpace(args),
+		UserID:      userID,
 		Username:    username,
 		Response:    cmd.Response,
 		Respond:     respond,
+		DBPool:      r.dbPool,
 	}
 
 	if handler, hok := r.handlers[name]; hok {

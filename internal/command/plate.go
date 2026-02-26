@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"image"
 	"image/color"
 	"image/draw"
@@ -11,8 +12,10 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
+
+	"stream-guy/internal/assets"
+	"stream-guy/internal/db"
 
 	xdraw "golang.org/x/image/draw"
 	"golang.org/x/image/font"
@@ -52,20 +55,7 @@ func generateFormattedNumber(region string) string {
 	return string(result)
 }
 
-func parseHexColor(hex string) color.RGBA {
-	if hex[0] == '#' {
-		hex = hex[1:]
-	}
-	if len(hex) == 3 {
-		hex = string([]byte{hex[0], hex[0], hex[1], hex[1], hex[2], hex[2]})
-	}
-	r, _ := strconv.ParseUint(hex[0:2], 16, 8)
-	g, _ := strconv.ParseUint(hex[2:4], 16, 8)
-	b, _ := strconv.ParseUint(hex[4:6], 16, 8)
-	return color.RGBA{R: uint8(r), G: uint8(g), B: uint8(b), A: 255}
-}
-
-var markerColor = parseHexColor("#FF00FF")
+var markerColor = assets.ParseHexColor("#FF00FF")
 
 func isMarker(img *image.RGBA, x, y int) bool {
 	r, g, b, a := img.At(x, y).RGBA()
@@ -209,7 +199,14 @@ func nearestNonMarker(img *image.RGBA, px, py int) color.RGBA {
 func GenerateLicensePlate(ctx Context) {
 	selectedRegion := pickRandomRegion()
 	plateText := generateFormattedNumber(selectedRegion)
-	textColor := parseHexColor(plateConfigs[selectedRegion].Color)
+	textColor := assets.ParseHexColor(plateConfigs[selectedRegion].Color)
+	dbPlateText := selectedRegion + ": " + plateText
+
+	if ctx.DBPool != nil {
+		if err := db.AddObtainedPlate(context.Background(), ctx.DBPool, ctx.UserID, ctx.Username, dbPlateText); err != nil {
+			log.Printf("Failed to save plate: %v", err)
+		}
+	}
 
 	inputFile, err := os.Open(filepath.Join("assets", "plates", selectedRegion+".png"))
 	if err != nil {

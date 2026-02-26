@@ -72,11 +72,12 @@ func (a *App) HandleChatMessage(data json.RawMessage, timestamp string) {
 		return
 	}
 
+	userID := msgData.User.ID
 	username := msgData.User.DisplayName
 	message := strings.TrimSpace(msgData.Message.Message)
 	if strings.HasPrefix(message, "!") {
 		if a.commandRegistry != nil {
-			a.commandRegistry.Dispatch(message, username)
+			a.commandRegistry.Dispatch(message, userID, username)
 		}
 		return
 	}

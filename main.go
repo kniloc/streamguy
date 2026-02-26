@@ -88,11 +88,21 @@ func NewApp() *App {
 		Keywords:         application.config.Keywords,
 	}
 
+	if application.config.PostgresURL != "" {
+		pool, dbErr := pgxpool.New(application.ctx, application.config.PostgresURL)
+		if dbErr != nil {
+			log.Printf("Warning: Failed to connect to database: %v", dbErr)
+		} else {
+			application.dbPool = pool
+			fmt.Println("Database pool configured")
+		}
+	}
+
 	cmds := make(map[string]command.Command, len(application.config.Commands))
 	for name, c := range application.config.Commands {
 		cmds[name] = command.Command{Response: c.Response, Aliases: c.Aliases}
 	}
-	application.commandRegistry = command.NewRegistry(cmds, func(username, text string, img image.Image) {
+	application.commandRegistry = command.NewRegistry(cmds, application.dbPool, func(username, text string, img image.Image) {
 		if application.popupService != nil {
 			if psErr := application.popupService.CreateCommandPopup(username, text, img); psErr != nil {
 				log.Printf("Failed to create command popup: %v", psErr)
@@ -105,16 +115,6 @@ func NewApp() *App {
 
 	if application.config.PiURL != "" {
 		application.piClient = pi.NewClient(application.config.PiURL)
-	}
-
-	if application.config.PostgresURL != "" {
-		pool, dbErr := pgxpool.New(application.ctx, application.config.PostgresURL)
-		if dbErr != nil {
-			log.Printf("Warning: Failed to connect to database: %v", dbErr)
-		} else {
-			application.dbPool = pool
-			fmt.Println("Database pool configured")
-		}
 	}
 
 	return application

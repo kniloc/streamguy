@@ -90,6 +90,9 @@ func ParseHexColor(hexColor string) color.NRGBA {
 		return defaultColor
 	}
 	hexColor = strings.TrimPrefix(hexColor, "#")
+	if len(hexColor) == 3 {
+		hexColor = string([]byte{hexColor[0], hexColor[0], hexColor[1], hexColor[1], hexColor[2], hexColor[2]})
+	}
 	if len(hexColor) != DefaultHexColorLength {
 		return defaultColor
 	}

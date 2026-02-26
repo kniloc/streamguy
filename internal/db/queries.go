@@ -12,3 +12,9 @@ func UpdateNumberOfTurns(ctx context.Context, pool *pgxpool.Pool, turns int, use
 		username, turns)
 	return err
 }
+
+func AddObtainedPlate(ctx context.Context, pool *pgxpool.Pool, userId, userName, plateNumber string) error {
+	_, pError := pool.Exec(ctx,
+		"INSERT INTO license_plates (user_id, username, plate) values ($1, $2, $3)", userId, userName, plateNumber)
+	return pError
+}
