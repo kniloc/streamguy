@@ -199,11 +199,12 @@ func nearestNonMarker(img *image.RGBA, px, py int) color.RGBA {
 func GenerateLicensePlate(ctx Context) {
 	selectedRegion := pickRandomRegion()
 	plateText := generateFormattedNumber(selectedRegion)
-	textColor := assets.ParseHexColor(plateConfigs[selectedRegion].Color)
+	hexColor := plateConfigs[selectedRegion].Color
+	textColor := assets.ParseHexColor(hexColor)
 	dbPlateText := selectedRegion + ": " + plateText
 
 	if ctx.DBPool != nil {
-		if err := db.AddObtainedPlate(context.Background(), ctx.DBPool, ctx.UserID, ctx.Username, dbPlateText); err != nil {
+		if err := db.AddObtainedPlate(context.Background(), ctx.DBPool, ctx.UserID, ctx.Username, dbPlateText, hexColor); err != nil {
 			log.Printf("Failed to save plate: %v", err)
 		}
 	}
