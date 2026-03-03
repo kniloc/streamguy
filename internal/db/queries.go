@@ -13,8 +13,8 @@ func UpdateNumberOfTurns(ctx context.Context, pool *pgxpool.Pool, turns int, use
 	return err
 }
 
-func AddObtainedPlate(ctx context.Context, pool *pgxpool.Pool, userId, userName, plateNumber, textColor string) error {
+func AddObtainedPlate(ctx context.Context, pool *pgxpool.Pool, userId, userName, plateRegion, plateNumber, textColor string) error {
 	_, pError := pool.Exec(ctx,
-		"INSERT INTO license_plates (user_id, username, plate, text_color) values ($1, $2, $3, $4)", userId, userName, plateNumber, textColor)
+		"INSERT INTO license_plates (user_id, username, plate_region, plate_number, text_color) values ($1, $2, $3, $4, $5)", userId, userName, plateRegion, plateNumber, textColor)
 	return pError
 }

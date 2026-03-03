@@ -198,13 +198,12 @@ func nearestNonMarker(img *image.RGBA, px, py int) color.RGBA {
 
 func GenerateLicensePlate(ctx Context) {
 	selectedRegion := pickRandomRegion()
-	plateText := generateFormattedNumber(selectedRegion)
+	plateNumber := generateFormattedNumber(selectedRegion)
 	hexColor := plateConfigs[selectedRegion].Color
 	textColor := assets.ParseHexColor(hexColor)
-	dbPlateText := selectedRegion + ": " + plateText
 
 	if ctx.DBPool != nil {
-		if err := db.AddObtainedPlate(context.Background(), ctx.DBPool, ctx.UserID, ctx.Username, dbPlateText, hexColor); err != nil {
+		if err := db.AddObtainedPlate(context.Background(), ctx.DBPool, ctx.UserID, ctx.Username, selectedRegion, plateNumber, hexColor); err != nil {
 			log.Printf("Failed to save plate: %v", err)
 		}
 	}
@@ -247,9 +246,9 @@ func GenerateLicensePlate(ctx Context) {
 	}
 
 	// split text by spaces to distribute across regions
-	segments := strings.Split(plateText, " ")
+	segments := strings.Split(plateNumber, " ")
 	if len(segments) < len(regions) {
-		segments = []string{plateText}
+		segments = []string{plateNumber}
 		regions = regions[:1]
 	} else if len(segments) > len(regions) {
 		joined := strings.Join(segments[len(regions)-1:], " ")
