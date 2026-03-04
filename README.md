@@ -8,14 +8,14 @@ A Windows desktop application for Twitch streamers that displays interactive cha
 - **Keyword GIF Reactions** - Trigger GIF popups when viewers type specific keywords
 - **TTS (Text-to-Speech)** - Channel point redemptions can trigger spoken messages
 - **Photo Popups** - Display viewer-submitted images via channel point redemptions
-- **Drawing Overlay** - Transparent overlay for on-screen drawing (toggle with double-Shift)
+- **Drawing Overlay** - Transparent overlay for on-screen drawing (toggle with double-Alt)
 - **Raspberry Pi Integration** - Send accepted images to a Pi display
 - **PostgreSQL Support** - Optional database integration
 
 ## Requirements
 
 - Windows 10+
-- Go 1.25+
+- Go 1.26+
 - [Streamer.bot](https://streamer.bot/) running with WebSocket server enabled
 
 ## Configuration
@@ -40,11 +40,16 @@ Define keyword-to-GIF mappings:
   "keywords": {
     "Joel": "Joel",
     "Classic": "Classic"
+  },
+  "commands": {
+    "plate": {
+      "aliases": ["lp"]
+    }
   }
 }
 ```
 
-Place corresponding GIF files in `assets/gifs/` (e.g., `assets/gifs/Joel.gif`).
+Place corresponding GIF files in `assets/gifs/` (e.g., `assets/gifs/Joel.gif`). The `commands` section lets you define chat commands with optional aliases.
 
 ## Building
 
@@ -70,13 +75,13 @@ go build -o stream-guy.exe .
 
 ## Chat Commands
 
-### `!plate`
+### `!plate` (alias: `!lp`)
 
 Generates a random license plate image from a random US state or Canadian province and displays it as a popup.
 
 ## Drawing Overlay
 
-Press **Control+Shift** to toggle drawing mode. When enabled, a transparent overlay covers the screen for on-stream drawing.
+Press **Alt** twice quickly (double-tap) to toggle drawing mode. When enabled, a transparent overlay covers the screen for on-stream drawing. A toolbar appears with a close button and color palette.
 
 ### Controls
 
@@ -86,7 +91,8 @@ Press **Control+Shift** to toggle drawing mode. When enabled, a transparent over
 | Right-click       | Undo last stroke     |
 | Middle-click      | Clear all strokes    |
 | Scroll wheel      | Cycle through colors |
-| Control+Shift     | Toggle drawing mode  |
+| Double-tap Alt    | Toggle drawing mode  |
+| Toolbar close (X) | Exit drawing mode    |
 
 ## License
 
