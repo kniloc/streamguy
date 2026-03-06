@@ -22,7 +22,7 @@ This checklist converts the performance research into an implementation-ready pl
 1. Validate windows-per-url metric remains bounded during sustained chat.
 2. Open/close popups repeatedly and confirm no stale window references.
 
-### [ ] A3. Replace `time.After` loops in GIF animation
+### [✓] A3. Replace `time.After` loops in GIF animation
 - Priority: `P1`
 - Size: `S`
 - Risk: `Low`

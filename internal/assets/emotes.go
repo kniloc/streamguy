@@ -182,17 +182,18 @@ func (em *EmoteManager) animateEmote(ctx context.Context, url string, gifImg *gi
 
 	frameIndex := 0
 
-	for {
-		delay := gifImg.Delay[frameIndex]
-		if delay == 0 {
-			delay = DefaultGIFFrameDelay
-		}
-		duration := time.Duration(delay) * MSPerFrameUnit
+	delay := gifImg.Delay[frameIndex]
+	if delay == 0 {
+		delay = DefaultGIFFrameDelay
+	}
+	timer := time.NewTimer(time.Duration(delay) * MSPerFrameUnit)
+	defer timer.Stop()
 
+	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(duration):
+		case <-timer.C:
 		}
 
 		numFrames := len(gifImg.Image)
@@ -206,6 +207,12 @@ func (em *EmoteManager) animateEmote(ctx context.Context, url string, gifImg *gi
 		em.framesMu.Unlock()
 
 		em.InvalidateWindows(url)
+
+		delay = gifImg.Delay[frameIndex]
+		if delay == 0 {
+			delay = DefaultGIFFrameDelay
+		}
+		timer.Reset(time.Duration(delay) * MSPerFrameUnit)
 	}
 }
 
