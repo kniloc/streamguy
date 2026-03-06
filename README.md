@@ -29,6 +29,7 @@ STREAMERBOT_HOST=127.0.0.1
 STREAMERBOT_PORT=8080
 PUBLIC_PI=http://your-pi-address:port  # Optional
 POSTGRES_URL=postgres://user:pass@host:5432/db  # Optional
+VERBOSE=1  # Optional: enable verbose per-message chat logging
 ```
 
 ### config.json

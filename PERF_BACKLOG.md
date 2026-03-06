@@ -4,11 +4,11 @@ This checklist converts the performance research into an implementation-ready pl
 
 ## Milestone A: Quick Wins
 
-### [ ] A2. Deduplicate URL → window registration
+### [✓] A2. Deduplicate URL → window registration
 - Priority: `P0`
 - Size: `M`
 - Risk: `Medium`
-- Dependencies: `A1`
+- Dependencies: none
 - Tasks:
 1. Replace append-only window slices with deduped semantics per URL.
 2. Make registration idempotent.
@@ -39,7 +39,7 @@ This checklist converts the performance research into an implementation-ready pl
 1. Compare alloc profiles before/after under same GIF load.
 2. Run 10+ minute session and verify goroutine steady state.
 
-### [ ] A4. Hot-path logging and keyword lookup cleanup
+### [✓] A4. Hot-path logging and keyword lookup cleanup
 - Priority: `P1`
 - Size: `S`
 - Risk: `Low`

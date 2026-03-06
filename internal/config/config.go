@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -13,6 +14,7 @@ type Config struct {
 	StreamerbotPort string
 	PiURL           string
 	PostgresURL     string
+	Verbose         bool
 	Keywords        map[string]string  `json:"keywords"`
 	Commands        map[string]Command `json:"commands"`
 }
@@ -61,8 +63,22 @@ func Load() *Config {
 		cfg.PostgresURL = pgURL
 	}
 
+	cfg.normalizeKeywords()
+
+	if v := os.Getenv("VERBOSE"); v == "1" || strings.EqualFold(v, "true") {
+		cfg.Verbose = true
+	}
+
 	fmt.Printf("Loaded config: Streamer.bot at %s:%s\n", cfg.StreamerbotHost, cfg.StreamerbotPort)
 	fmt.Printf("Loaded %d keyword mappings\n", len(cfg.Keywords))
 
 	return cfg
+}
+
+func (c *Config) normalizeKeywords() {
+	normalized := make(map[string]string, len(c.Keywords))
+	for k, v := range c.Keywords {
+		normalized[strings.ToLower(k)] = v
+	}
+	c.Keywords = normalized
 }

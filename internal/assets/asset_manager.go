@@ -43,6 +43,11 @@ func NewBaseManager(downloadPool *download.Pool) *BaseManager {
 func (bam *BaseManager) RegisterWindow(url string, window *app.Window) {
 	bam.windowsMu.Lock()
 	defer bam.windowsMu.Unlock()
+	for _, w := range bam.Windows[url] {
+		if w == window {
+			return
+		}
+	}
 	bam.Windows[url] = append(bam.Windows[url], window)
 }
 
@@ -57,7 +62,11 @@ func (bam *BaseManager) UnregisterWindow(window *app.Window) {
 				filtered = append(filtered, w)
 			}
 		}
-		bam.Windows[url] = filtered
+		if len(filtered) == 0 {
+			delete(bam.Windows, url)
+		} else {
+			bam.Windows[url] = filtered
+		}
 	}
 }
 

@@ -68,12 +68,8 @@ func (cache *ImageCache) tryLoadGifFile(file os.DirEntry) (returnErr error) {
 }
 
 func ResolveKeyword(keyword string, keywords map[string]string) string {
-	lowerKeyword := strings.ToLower(keyword)
-
-	for k, v := range keywords {
-		if strings.ToLower(k) == lowerKeyword {
-			return v
-		}
+	if v, ok := keywords[strings.ToLower(keyword)]; ok {
+		return v
 	}
 	return keyword
 }

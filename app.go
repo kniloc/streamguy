@@ -83,7 +83,9 @@ func (a *App) HandleChatMessage(data json.RawMessage, timestamp string) {
 		return
 	}
 	emotesTag := msgData.Message.Emotes
-	log.Printf("Chat: %s: %s", username, message)
+	if a.config.Verbose {
+		log.Printf("Chat: %s: %s", username, message)
+	}
 
 	userColor := assets.ParseHexColor(msgData.User.Color)
 
@@ -171,11 +173,8 @@ func (a *App) findMatchingKeyword(message string) string {
 		return ""
 	}
 
-	messageLower := strings.ToLower(message)
-	for keyword := range a.config.Keywords {
-		if messageLower == strings.ToLower(keyword) {
-			return keyword
-		}
+	if _, ok := a.config.Keywords[strings.ToLower(message)]; ok {
+		return message
 	}
 	return ""
 }

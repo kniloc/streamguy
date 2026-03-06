@@ -239,6 +239,7 @@ func (em *EmoteManager) StopAllAnimations() {
 func (em *EmoteManager) UnregisterWindow(window *app.Window) {
 	em.windowsMu.Lock()
 
+	var urlsToStop []string
 	for url, windows := range em.Windows {
 		filtered := make([]*app.Window, 0, len(windows))
 		for _, w := range windows {
@@ -246,16 +247,19 @@ func (em *EmoteManager) UnregisterWindow(window *app.Window) {
 				filtered = append(filtered, w)
 			}
 		}
-		em.Windows[url] = filtered
-
 		if len(filtered) == 0 {
-			em.windowsMu.Unlock()
-			em.StopAnimation(url)
-			em.windowsMu.Lock()
+			delete(em.Windows, url)
+			urlsToStop = append(urlsToStop, url)
+		} else {
+			em.Windows[url] = filtered
 		}
 	}
 
 	em.windowsMu.Unlock()
+
+	for _, url := range urlsToStop {
+		em.StopAnimation(url)
+	}
 }
 
 func CreateTextLabel(th *material.Theme, text string) material.LabelStyle {
