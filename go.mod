@@ -1,6 +1,6 @@
 module stream-guy
 
-go 1.26
+go 1.26.1
 
 require (
 	gioui.org v0.9.0
@@ -15,7 +15,7 @@ require (
 
 require (
 	gioui.org/shader v1.0.8 // indirect
-	github.com/go-text/typesetting v0.3.4 // indirect
+	github.com/go-text/typesetting v0.3.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
