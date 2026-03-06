@@ -80,7 +80,7 @@ This checklist converts the performance research into an implementation-ready pl
 - Priority: `P1`
 - Size: `M`
 - Risk: `Medium`
-- Dependencies: `A1`
+- Dependencies: none
 - Tasks:
 1. Add decode fast-path using content type and/or magic bytes.
 2. Review worker/queue sizing based on measured throughput.
@@ -100,7 +100,7 @@ This checklist converts the performance research into an implementation-ready pl
 - Priority: `P0`
 - Size: `L`
 - Risk: `High`
-- Dependencies: `A1`
+- Dependencies: none
 - Tasks:
 1. Introduce bounded worker queues for event handling.
 2. Define ordering guarantees across event types.
@@ -138,7 +138,7 @@ This checklist converts the performance research into an implementation-ready pl
 - Priority: `P2`
 - Size: `M`
 - Risk: `Medium`
-- Dependencies: `A1`
+- Dependencies: none
 - Tasks:
 1. Profile draw-mode workloads to identify dominant operations.
 2. Evaluate partial redraw/dirty-rect approach feasibility.
