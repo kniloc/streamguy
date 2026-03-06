@@ -4,30 +4,6 @@ This checklist converts the performance research into an implementation-ready pl
 
 ## Milestone A - Quick Wins
 
-### [ ] A1. Add profiling and telemetry baseline
-- Priority: `P0`
-- Size: `M`
-- Risk: `Low`
-- Dependencies: none
-- Tasks:
-1. Add optional `pprof` HTTP endpoint behind config/env flag.
-2. Add counters/timers for:
-   - popup creation latency
-   - websocket handler latency
-   - download queue depth and drops
-   - emote invalidation calls
-   - windows-per-asset URL
-3. Add periodic perf summary log (10-30s interval).
-4. Document baseline load scenario and capture baseline metrics.
-- Acceptance criteria:
-1. Perf instrumentation can be enabled/disabled without code changes.
-2. Baseline report includes CPU, allocs, goroutines, and p95 latencies.
-3. No functional behavior change when telemetry is disabled.
-- Verification:
-1. Run app with telemetry off and confirm normal behavior.
-2. Run app with telemetry on and capture one baseline session.
-3. Confirm counters update under chat/emote/photo activity.
-
 ### [ ] A2. Deduplicate URL -> window registration
 - Priority: `P0`
 - Size: `M`
@@ -173,23 +149,6 @@ This checklist converts the performance research into an implementation-ready pl
 - Verification:
 1. Compare draw-mode CPU profile before/after.
 2. Manual UX check for stroke quality and responsiveness.
-
-### [ ] D2. Add benchmark and load harness
-- Priority: `P1`
-- Size: `M`
-- Risk: `Low`
-- Dependencies: `A1`, ideally after `B` and `C`
-- Tasks:
-1. Add microbenchmarks for parser/scaling/compositing hot paths.
-2. Add synthetic integration load scenario for chat/emotes/commands.
-3. Add repeatable perf comparison process for future changes.
-- Acceptance criteria:
-1. Benchmarks run locally with documented commands.
-2. Integration load script reproduces baseline scenario consistently.
-3. Team can detect regressions with before/after metrics.
-- Verification:
-1. Run benchmark suite and save baseline outputs.
-2. Run integration load script and verify metric collection pipeline.
 
 ## Release Readiness Criteria
 
