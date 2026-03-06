@@ -2,9 +2,9 @@
 
 This checklist converts the performance research into an implementation-ready plan with clear acceptance criteria and verification steps.
 
-## Milestone A - Quick Wins
+## Milestone A: Quick Wins
 
-### [ ] A2. Deduplicate URL -> window registration
+### [ ] A2. Deduplicate URL → window registration
 - Priority: `P0`
 - Size: `M`
 - Risk: `Medium`
@@ -56,7 +56,7 @@ This checklist converts the performance research into an implementation-ready pl
 1. Load test chat stream and compare log lines/sec before/after.
 2. Validate keyword-triggered GIF behavior with mixed-case inputs.
 
-## Milestone B - Core Media Performance
+## Milestone B: Core Media Performance
 
 ### [ ] B1. Eliminate per-frame emote scaling in render path
 - Priority: `P0`
@@ -94,7 +94,7 @@ This checklist converts the performance research into an implementation-ready pl
 1. Stress with burst downloads and measure drop rate.
 2. Validate GIF/static/photo flows end-to-end.
 
-## Milestone C - Latency Resilience
+## Milestone C: Latency Resilience
 
 ### [ ] C1. Decouple websocket ingest from heavy processing
 - Priority: `P0`
@@ -132,7 +132,7 @@ This checklist converts the performance research into an implementation-ready pl
 1. Measure p50/p95 `!plate` generation latency before/after.
 2. Burst `!plate` calls while chat is active and confirm responsiveness.
 
-## Milestone D - Guardrails and Advanced Optimization
+## Milestone D: Guardrails and Advanced Optimization
 
 ### [ ] D1. Overlay redraw optimization pass
 - Priority: `P2`
