@@ -45,6 +45,7 @@ type App struct {
 	// Shared services
 	downloadPool    *download.Pool
 	popupService    *popup.Service
+	zorderManager   *window.ZOrderManager
 	piClient        *pi.Client
 	dbPool          *pgxpool.Pool
 	commandRegistry *command.Registry
@@ -215,6 +216,9 @@ func (a *App) Shutdown() {
 		}
 
 		a.closeAllWindows()
+		if a.zorderManager != nil {
+			a.zorderManager.Stop()
+		}
 		if a.streamerBotClient != nil {
 			a.streamerBotClient.Close()
 		}

@@ -37,6 +37,7 @@ type Service struct {
 	WindowRegistry   *window.Registry
 	PlacementManager *window.PlacementManager
 	DownloadPool     *download.Pool
+	ZOrder           *window.ZOrderManager
 
 	Theme          *material.Theme
 	LoadedFontFace font.FontFace
@@ -269,7 +270,7 @@ func (s *Service) runPhotoPopup(pw *Window, th *material.Theme) error {
 		switch ev := e.(type) {
 		case app.Win32ViewEvent:
 			if ev.Valid() {
-				ConfigureFromViewEvent(pw, windows.HWND(ev.HWND))
+				ConfigureFromViewEvent(pw, windows.HWND(ev.HWND), s.ZOrder)
 			}
 
 		case app.DestroyEvent:
@@ -410,7 +411,7 @@ func (s *Service) runCommandPopup(pw *Window, th *material.Theme) error {
 		switch ev := e.(type) {
 		case app.Win32ViewEvent:
 			if ev.Valid() {
-				ConfigureFromViewEvent(pw, windows.HWND(ev.HWND))
+				ConfigureFromViewEvent(pw, windows.HWND(ev.HWND), s.ZOrder)
 			}
 
 		case app.DestroyEvent:
@@ -475,7 +476,7 @@ func (s *Service) runChatPopup(pw *Window, th *material.Theme) error {
 		switch ev := e.(type) {
 		case app.Win32ViewEvent:
 			if ev.Valid() {
-				ConfigureFromViewEvent(pw, windows.HWND(ev.HWND))
+				ConfigureFromViewEvent(pw, windows.HWND(ev.HWND), s.ZOrder)
 			}
 
 		case app.DestroyEvent:
@@ -526,7 +527,7 @@ func (s *Service) runGifPopup(pw *Window, gifData *gif.GIF) error {
 		switch ev := e.(type) {
 		case app.Win32ViewEvent:
 			if ev.Valid() {
-				ConfigureFromViewEvent(pw, windows.HWND(ev.HWND))
+				ConfigureFromViewEvent(pw, windows.HWND(ev.HWND), s.ZOrder)
 			}
 
 		case app.DestroyEvent:
@@ -563,7 +564,7 @@ func (s *Service) resizeWindowToContent(gtx layout.Context, pw *Window, th *mate
 		go func(hwnd windows.HWND) {
 			time.Sleep(50 * time.Millisecond)
 			window.ClampWindowToWorkArea(hwnd)
-			window.SetWindowTopmost(hwnd)
+			s.ZOrder.RequestTopmost(hwnd)
 		}(pw.HWND)
 	}
 

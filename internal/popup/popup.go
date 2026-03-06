@@ -312,58 +312,17 @@ func Initialize(popup *Window, title string, width, height int, placementManager
 	return nil
 }
 
-var (
-	configMu         sync.Mutex
-	configSeqCounter int64
-	latestConfigSeq  int64
-	latestConfigHWND windows.HWND
-)
-
-func ConfigureFromViewEvent(popup *Window, hwnd windows.HWND) {
+func ConfigureFromViewEvent(popup *Window, hwnd windows.HWND, zorder *window.ZOrderManager) {
 	if popup.HWND != 0 {
 		return
 	}
 	popup.HWND = hwnd
-	scheduleTopmostReassert(hwnd)
-
-	configMu.Lock()
-	configSeqCounter++
-	seq := configSeqCounter
-	configMu.Unlock()
 
 	go func() {
 		time.Sleep(10 * time.Millisecond)
-		configMu.Lock()
-		defer configMu.Unlock()
-
 		window.ConfigurePopWindow(hwnd)
 		window.SetPopupWindowPositionByHandle(hwnd, popup.InitialX, popup.InitialY)
 		window.ClampWindowToWorkArea(hwnd)
-
-		if seq >= latestConfigSeq {
-			latestConfigSeq = seq
-			latestConfigHWND = hwnd
-		}
-		// Always re-assert the newest popup on top after all
-		// position changes are complete.
-		if latestConfigHWND != 0 {
-			window.SetWindowTopmost(latestConfigHWND)
-		}
-	}()
-}
-
-func scheduleTopmostReassert(hwnd windows.HWND) {
-	if hwnd == 0 {
-		return
-	}
-
-	go func() {
-		for i := 0; i < 5; i++ {
-			time.Sleep(30 * time.Millisecond)
-			if !window.IsWindowValid(hwnd) {
-				return
-			}
-			window.SetWindowTopmost(hwnd)
-		}
+		zorder.RequestTopmost(hwnd)
 	}()
 }

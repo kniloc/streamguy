@@ -74,6 +74,8 @@ func NewApp() *App {
 	application.placementManager = window.NewPlacementManager()
 	application.placementManager.Rng = rand.New(rand.NewSource(time.Now().UnixNano()))
 
+	application.zorderManager = window.NewZOrderManager()
+
 	application.popupService = &popup.Service{
 		ImageCache:       application.imageCache,
 		EmoteManager:     application.emoteManager,
@@ -82,6 +84,7 @@ func NewApp() *App {
 		WindowRegistry:   application.windowRegistry,
 		PlacementManager: application.placementManager,
 		DownloadPool:     application.downloadPool,
+		ZOrder:           application.zorderManager,
 		Theme:            application.theme,
 		LoadedFontFace:   application.loadedFontFace,
 		IsPaused:         application.isPaused,
