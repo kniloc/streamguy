@@ -76,7 +76,7 @@ This checklist converts the performance research into an implementation-ready pl
 1. Profile popup rendering under mixed emote traffic before/after.
 2. Confirm cache hit ratio and bounded memory behavior.
 
-### [ ] B2. Optimize download/decode pipeline
+### [✓] B2. Optimize download/decode pipeline
 - Priority: `P1`
 - Size: `M`
 - Risk: `Medium`
