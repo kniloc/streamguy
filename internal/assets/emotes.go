@@ -29,6 +29,15 @@ const (
 
 var BlackText = color.NRGBA{R: 0, G: 0, B: 0, A: 255}
 
+type scaledCacheKey struct {
+	url        string
+	frameIndex int
+	width      int
+	height     int
+}
+
+const maxScaledCacheEntries = 512
+
 type EmoteManager struct {
 	*BaseManager
 	gifCache         map[string]*gif.GIF
@@ -39,6 +48,8 @@ type EmoteManager struct {
 	animatingMu      sync.RWMutex
 	compositors      map[string]*GIFCompositor
 	compositorsMu    sync.RWMutex
+	scaledCache      map[scaledCacheKey]*image.RGBA
+	scaledCacheMu    sync.RWMutex
 }
 
 type animationTicker struct {
@@ -59,6 +70,7 @@ func NewEmoteManager(downloadPool *download.Pool) *EmoteManager {
 		currentFrames:    make(map[string]int),
 		animationTickers: make(map[string]*animationTicker),
 		compositors:      make(map[string]*GIFCompositor),
+		scaledCache:      make(map[scaledCacheKey]*image.RGBA),
 	}
 }
 
@@ -236,6 +248,32 @@ func (em *EmoteManager) StopAllAnimations() {
 	}
 }
 
+func (em *EmoteManager) getScaledCached(key scaledCacheKey) (*image.RGBA, bool) {
+	em.scaledCacheMu.RLock()
+	defer em.scaledCacheMu.RUnlock()
+	img, ok := em.scaledCache[key]
+	return img, ok
+}
+
+func (em *EmoteManager) putScaledCached(key scaledCacheKey, img *image.RGBA) {
+	em.scaledCacheMu.Lock()
+	defer em.scaledCacheMu.Unlock()
+	if len(em.scaledCache) >= maxScaledCacheEntries {
+		em.scaledCache = make(map[scaledCacheKey]*image.RGBA)
+	}
+	em.scaledCache[key] = img
+}
+
+func (em *EmoteManager) evictScaledCacheForURL(url string) {
+	em.scaledCacheMu.Lock()
+	defer em.scaledCacheMu.Unlock()
+	for key := range em.scaledCache {
+		if key.url == url {
+			delete(em.scaledCache, key)
+		}
+	}
+}
+
 func (em *EmoteManager) UnregisterWindow(window *app.Window) {
 	em.windowsMu.Lock()
 
@@ -259,6 +297,7 @@ func (em *EmoteManager) UnregisterWindow(window *app.Window) {
 
 	for _, url := range urlsToStop {
 		em.StopAnimation(url)
+		em.evictScaledCacheForURL(url)
 	}
 }
 
@@ -376,7 +415,22 @@ func (em *EmoteManager) renderEmoteSegment(gtx layout.Context, th *material.Them
 		scaledWidth := int(float32(bounds.Dx()) * scale)
 		scaledHeight := int(float32(bounds.Dy()) * scale)
 
-		scaledImg := ScaleImage(img, scaledWidth, scaledHeight)
+		frameIdx := -1
+		if emoteData.IsGIF {
+			frameIdx = em.GetCurrentFrame(seg.ImageURL)
+		}
+		cacheKey := scaledCacheKey{
+			url:        seg.ImageURL,
+			frameIndex: frameIdx,
+			width:      scaledWidth,
+			height:     scaledHeight,
+		}
+
+		scaledImg, ok := em.getScaledCached(cacheKey)
+		if !ok {
+			scaledImg = ScaleImage(img, scaledWidth, scaledHeight)
+			em.putScaledCached(cacheKey, scaledImg)
+		}
 
 		imgOp := paint.NewImageOp(scaledImg)
 		imgOp.Add(gtx.Ops)

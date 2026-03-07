@@ -120,6 +120,26 @@ func (o *Window) Redraw() {
 	o.Present()
 }
 
+func (o *Window) RedrawToolbarOnly() {
+	if o.Hwnd == 0 || o.MemDC == 0 || o.Bits == nil {
+		return
+	}
+	if !o.drawMode.Load() {
+		return
+	}
+	for y := ToolbarY; y < ToolbarY+ToolbarH && y < o.H; y++ {
+		for x := ToolbarX; x < ToolbarX+ToolbarW && x < o.W; x++ {
+			off := (y*o.W + x) * 4
+			o.Buf[off+0] = 0
+			o.Buf[off+1] = 0
+			o.Buf[off+2] = 0
+			o.Buf[off+3] = 0x10
+		}
+	}
+	o.DrawToolbar(o.SelectedColor)
+	o.Present()
+}
+
 func (o *Window) SetPixelRaw(x, y int, c color.NRGBA) {
 	if x < 0 || y < 0 || x >= o.W || y >= o.H {
 		return

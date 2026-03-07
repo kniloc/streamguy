@@ -156,7 +156,7 @@ func wndProcFn(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr {
 				ow.SelectedColor = (ow.SelectedColor + 1) % len(Palette)
 			}
 			ow.CurrentColor = Palette[ow.SelectedColor]
-			ow.Redraw()
+			ow.RedrawToolbarOnly()
 		}
 		return 0
 	case WmLButtonUp:

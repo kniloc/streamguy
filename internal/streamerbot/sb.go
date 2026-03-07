@@ -25,10 +25,11 @@ type EventHandler interface {
 }
 
 type Client struct {
-	handler EventHandler
-	conn    *websocket.Conn
-	host    string
-	port    string
+	handler    EventHandler
+	dispatcher *eventDispatcher
+	conn       *websocket.Conn
+	host       string
+	port       string
 
 	Connected    atomic.Bool
 	Reconnecting atomic.Bool
@@ -142,15 +143,11 @@ func (c *Client) Listen(ctx context.Context) {
 		eventName := event.EventName()
 
 		if eventName == TwitchChatEventName {
-			if c.handler != nil {
-				c.handler.HandleChatMessage(event.Data, event.TimeStamp)
-			}
+			c.dispatcher.enqueueChat(event.Data, event.TimeStamp)
 		}
 
 		if eventName == TwitchRewardEventName {
-			if c.handler != nil {
-				c.handler.HandleRewardRedemption(event.Data)
-			}
+			c.dispatcher.enqueueReward(event.Data)
 		}
 	}
 }
@@ -163,6 +160,13 @@ func (c *Client) Close() {
 }
 
 func (c *Client) Start(ctx context.Context) {
+	c.dispatcher = newEventDispatcher(c.handler)
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		c.dispatcher.shutdown(shutdownCtx)
+	}()
+
 	if ctx != nil {
 		go func() {
 			<-ctx.Done()

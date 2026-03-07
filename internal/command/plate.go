@@ -13,6 +13,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
+	"time"
 
 	"stream-guy/internal/assets"
 	"stream-guy/internal/db"
@@ -22,6 +24,78 @@ import (
 	"golang.org/x/image/font/opentype"
 	"golang.org/x/image/math/fixed"
 )
+
+// plateTemplate holds a decoded, marker-cleared plate template and its text regions.
+type plateTemplate struct {
+	rgba    *image.RGBA
+	regions []image.Rectangle
+}
+
+var (
+	plateFont     *opentype.Font
+	plateFontOnce sync.Once
+
+	plateTemplatesMu sync.Mutex
+	plateTemplates   = make(map[string]*plateTemplate)
+)
+
+func initPlateFont() {
+	fontPath := filepath.Join(os.Getenv("LOCALAPPDATA"), "Microsoft", "Windows", "Fonts", "dealerplate california.otf")
+	fontData, err := os.ReadFile(fontPath)
+	if err != nil {
+		log.Printf("Failed to read font file: %v", err)
+		return
+	}
+	f, err := opentype.Parse(fontData)
+	if err != nil {
+		log.Printf("Failed to parse font: %v", err)
+		return
+	}
+	plateFont = f
+}
+
+// getPlateTemplate returns a copy of the cached RGBA and the shared regions slice.
+func getPlateTemplate(region string) (*image.RGBA, []image.Rectangle, bool) {
+	plateTemplatesMu.Lock()
+	defer plateTemplatesMu.Unlock()
+
+	tpl, ok := plateTemplates[region]
+	if !ok {
+		// Load, decode, find markers, clear markers, then cache.
+		inputFile, err := os.Open(filepath.Join("assets", "plates", region+".png"))
+		if err != nil {
+			log.Printf("Failed to open plate image for %s: %v", region, err)
+			return nil, nil, false
+		}
+		defer inputFile.Close()
+
+		img, err := png.Decode(inputFile)
+		if err != nil {
+			log.Printf("Failed to decode plate image for %s: %v", region, err)
+			return nil, nil, false
+		}
+
+		bounds := img.Bounds()
+		rgba := image.NewRGBA(bounds)
+		draw.Draw(rgba, bounds, img, bounds.Min, draw.Src)
+
+		regions := findMarkerRegions(rgba)
+		if len(regions) == 0 {
+			log.Printf("No marker region found in plate image for %s", region)
+			return nil, nil, false
+		}
+		clearMarkers(rgba)
+
+		tpl = &plateTemplate{rgba: rgba, regions: regions}
+		plateTemplates[region] = tpl
+	}
+
+	// Return a copy of the RGBA since GenerateLicensePlate draws on it.
+	src := tpl.rgba
+	cp := image.NewRGBA(src.Bounds())
+	copy(cp.Pix, src.Pix)
+	return cp, tpl.regions, true
+}
 
 func PlateRegions() []string {
 	keys := make([]string, 0, len(plateConfigs))
@@ -197,6 +271,14 @@ func nearestNonMarker(img *image.RGBA, px, py int) color.RGBA {
 }
 
 func GenerateLicensePlate(ctx Context) {
+	start := time.Now()
+
+	plateFontOnce.Do(initPlateFont)
+	if plateFont == nil {
+		log.Printf("Plate font not available")
+		return
+	}
+
 	selectedRegion := pickRandomRegion()
 	plateNumber := generateFormattedNumber(selectedRegion)
 	hexColor := plateConfigs[selectedRegion].Color
@@ -208,40 +290,8 @@ func GenerateLicensePlate(ctx Context) {
 		}
 	}
 
-	inputFile, err := os.Open(filepath.Join("assets", "plates", selectedRegion+".png"))
-	if err != nil {
-		log.Printf("Failed to open plate image for %s: %v", selectedRegion, err)
-		return
-	}
-	defer inputFile.Close()
-
-	img, err := png.Decode(inputFile)
-	if err != nil {
-		log.Printf("Failed to decode plate image for %s: %v", selectedRegion, err)
-		return
-	}
-
-	bounds := img.Bounds()
-	rgba := image.NewRGBA(bounds)
-	draw.Draw(rgba, bounds, img, bounds.Min, draw.Src)
-
-	regions := findMarkerRegions(rgba)
-	if len(regions) == 0 {
-		log.Printf("No marker region found in plate image for %s", selectedRegion)
-		return
-	}
-	clearMarkers(rgba)
-
-	fontPath := filepath.Join(os.Getenv("LOCALAPPDATA"), "Microsoft", "Windows", "Fonts", "dealerplate california.otf")
-	fontData, err := os.ReadFile(fontPath)
-	if err != nil {
-		log.Printf("Failed to read font file: %v", err)
-		return
-	}
-
-	parsedFont, err := opentype.Parse(fontData)
-	if err != nil {
-		log.Printf("Failed to parse font: %v", err)
+	rgba, regions, ok := getPlateTemplate(selectedRegion)
+	if !ok {
 		return
 	}
 
@@ -258,7 +308,7 @@ func GenerateLicensePlate(ctx Context) {
 	for i, region := range regions {
 		// render text at a large size, then stretch to fill the region
 		renderSize := math.Max(float64(region.Dy())*2, 200)
-		face, fErr := opentype.NewFace(parsedFont, &opentype.FaceOptions{
+		face, fErr := opentype.NewFace(plateFont, &opentype.FaceOptions{
 			Size:    renderSize,
 			DPI:     72,
 			Hinting: font.HintingFull,
@@ -301,5 +351,6 @@ func GenerateLicensePlate(ctx Context) {
 		xdraw.BiLinear.Scale(rgba, region, tmp, tmp.Bounds(), xdraw.Over, nil)
 	}
 
+	log.Printf("!plate generated in %v", time.Since(start))
 	ctx.Respond("", rgba)
 }

@@ -58,7 +58,7 @@ This checklist converts the performance research into an implementation-ready pl
 
 ## Milestone B: Core Media Performance
 
-### [ ] B1. Eliminate per-frame emote scaling in render path
+### [✓] B1. Eliminate per-frame emote scaling in render path
 - Priority: `P0`
 - Size: `L`
 - Risk: `Medium`
@@ -96,7 +96,7 @@ This checklist converts the performance research into an implementation-ready pl
 
 ## Milestone C: Latency Resilience
 
-### [ ] C1. Decouple websocket ingest from heavy processing
+### [✓] C1. Decouple websocket ingest from heavy processing
 - Priority: `P0`
 - Size: `L`
 - Risk: `High`
@@ -114,7 +114,7 @@ This checklist converts the performance research into an implementation-ready pl
 1. Simulate slow command/photo handlers and observe ingest continuity.
 2. Validate ordering with deterministic event sequence tests.
 
-### [ ] C2. Cache plate command assets and parsing
+### [✓] C2. Cache plate command assets and parsing
 - Priority: `P1`
 - Size: `M`
 - Risk: `Medium`
@@ -134,7 +134,7 @@ This checklist converts the performance research into an implementation-ready pl
 
 ## Milestone D: Guardrails and Advanced Optimization
 
-### [ ] D1. Overlay redraw optimization pass
+### [✓] D1. Overlay redraw optimization pass
 - Priority: `P2`
 - Size: `M`
 - Risk: `Medium`
