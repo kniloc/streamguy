@@ -376,6 +376,7 @@ func (em *EmoteManager) renderEmoteSegment(gtx layout.Context, th *material.Them
 
 	emoteData, err := em.GetEmote(seg.ImageURL)
 	if err != nil {
+		em.RegisterWindow(seg.ImageURL, window)
 		return CreateTextLabel(th, seg.Text).Layout(gtx)
 	}
 
