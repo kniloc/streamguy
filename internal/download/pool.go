@@ -137,8 +137,7 @@ func isRetryable(err error) bool {
 	if strings.HasPrefix(msg, "server error: ") {
 		return true
 	}
-	var netErr net.Error
-	if errors.As(err, &netErr) {
+	if _, ok := errors.AsType[net.Error](err); ok {
 		return true
 	}
 	if strings.Contains(msg, "connection reset") || strings.Contains(msg, "EOF") {
