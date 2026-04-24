@@ -50,14 +50,16 @@ type Service struct {
 }
 
 func (s *Service) themeWithFont() *material.Theme {
-	th := s.Theme
-	if th == nil {
-		th = material.NewTheme()
+	var th material.Theme
+	if s.Theme != nil {
+		th = *s.Theme // copy the struct so we don't mutate the shared theme
+	} else {
+		th = *material.NewTheme()
 	}
 	if s.LoadedFontFace.Face != nil {
 		th.Shaper = text.NewShaper(text.WithCollection([]font.FontFace{s.LoadedFontFace}))
 	}
-	return th
+	return &th
 }
 
 func (s *Service) paused() bool {
@@ -487,6 +489,7 @@ func (s *Service) runChatPopup(pw *Window, th *material.Theme) error {
 
 			HandleContextMenuEvents(gtx, pw)
 			HandleCopyButton(gtx, pw)
+			HandleEmoteHoverEvents(gtx, pw, s.EmoteManager)
 
 			if !resized && time.Since(pw.StartTime) > 100*time.Millisecond {
 				resized = s.resizeWindowToContent(gtx, pw, th)
@@ -497,6 +500,12 @@ func (s *Service) runChatPopup(pw *Window, th *material.Theme) error {
 
 			if pw.ContextMenu {
 				RenderContextMenu(gtx, pw, th)
+			}
+
+			if s.EmoteManager != nil {
+				if pw.hoveredEmoteName != "" {
+					RenderEmoteTooltip(gtx, pw.hoveredEmoteName, pw.hoveredEmotePos, pw.hoveredEmoteSize, pw.hoveredEmoteCenterX, th)
+				}
 			}
 
 			ev.Frame(gtx.Ops)

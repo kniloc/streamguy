@@ -16,6 +16,7 @@ import (
 	"stream-guy/internal/window"
 
 	"gioui.org/app"
+	"gioui.org/f32"
 	"gioui.org/io/clipboard"
 	"gioui.org/io/event"
 	"gioui.org/io/pointer"
@@ -76,6 +77,12 @@ type Window struct {
 	InitialX int
 	InitialY int
 	HWND     windows.HWND
+
+	// Per-window emote hover state
+	hoveredEmoteName    string
+	hoveredEmotePos     f32.Point
+	hoveredEmoteSize    image.Point
+	hoveredEmoteCenterX int
 }
 
 func ClampHeight(height int) int {
@@ -325,4 +332,109 @@ func ConfigureFromViewEvent(popup *Window, hwnd windows.HWND, zorder *window.ZOr
 		window.ClampWindowToWorkArea(hwnd)
 		zorder.RequestTopmost(hwnd)
 	}()
+}
+
+// HandleEmoteHoverEvents processes pointer Enter/Leave events for all Twitch emote
+// segments and updates the per-window hover state accordingly.
+func HandleEmoteHoverEvents(gtx layout.Context, pw *Window, em *assets.EmoteManager) {
+	if em == nil {
+		return
+	}
+	for _, seg := range pw.MessageSegments {
+		if !seg.IsEmote {
+			continue
+		}
+		if strings.Contains(seg.ImageURL, assets.TwemojiCDNPath) {
+			continue
+		}
+		tag := em.GetOrCreateHoverTag(seg.ImageURL, seg.Text, pw.GioWindow)
+		for {
+			ev, ok := gtx.Source.Event(pointer.Filter{
+				Target: tag,
+				Kinds:  pointer.Enter | pointer.Leave,
+			})
+			if !ok {
+				break
+			}
+			if pe, ok := ev.(pointer.Event); ok {
+				switch pe.Kind {
+				case pointer.Enter:
+					pw.hoveredEmoteName = seg.Text
+					pw.hoveredEmotePos = pe.Position
+					pw.hoveredEmoteSize = tag.Size
+					pw.hoveredEmoteCenterX = tag.CenterX
+					pw.GioWindow.Invalidate()
+				case pointer.Leave:
+					pw.hoveredEmoteName = ""
+					pw.hoveredEmotePos = f32.Point{}
+					pw.hoveredEmoteSize = image.Point{}
+					pw.hoveredEmoteCenterX = 0
+					pw.GioWindow.Invalidate()
+				}
+			}
+		}
+	}
+}
+
+// RenderEmoteTooltip draws a small dark tooltip with the emote name centered
+// above the emote. pos is the cursor's window-space position, emoteSize is the
+// emote's pixel dimensions — used to pin the tooltip above the emote top
+// regardless of where within the emote the cursor sits.
+func RenderEmoteTooltip(gtx layout.Context, name string, pos f32.Point, emoteSize image.Point, emoteCenterX int, th *material.Theme) {
+	const (
+		tooltipPaddingX = 8
+		tooltipHeight   = 24
+		tooltipGap      = 2 // px gap between emote top and tooltip bottom
+	)
+
+	label := material.Body1(th, name)
+	label.Color = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
+	label.TextSize = unit.Sp(12)
+
+	// Measure text width with unconstrained width so the label reports its natural width.
+	macro := op.Record(gtx.Ops)
+	measureGtx := gtx
+	measureGtx.Constraints = layout.Constraints{
+		Max: image.Point{X: 1 << 20, Y: tooltipHeight},
+	}
+	dims := label.Layout(measureGtx)
+	macro.Stop()
+
+	tooltipWidth := dims.Size.X + tooltipPaddingX*2
+
+	// Center tooltip over the emote using the emote's known window-space center X.
+	x := emoteCenterX - tooltipWidth/2
+
+	// Pin tooltip bottom to the emote's top edge: cursor Y is somewhere within the
+	// emote (0..emoteSize.Y), so emote top = cursor Y - (offset within emote).
+	// We conservatively place the tooltip above cursor Y minus the full emote height,
+	// guaranteeing it never overlaps the emote.
+	y := int(pos.Y) - emoteSize.Y - tooltipHeight - tooltipGap
+
+	// Clamp to window bounds.
+	if x+tooltipWidth > gtx.Constraints.Max.X {
+		x = gtx.Constraints.Max.X - tooltipWidth
+	}
+	if x < 0 {
+		x = 0
+	}
+	if y < 0 {
+		y = 0
+	}
+
+	offset := op.Offset(image.Point{X: x, Y: y}).Push(gtx.Ops)
+	defer offset.Pop()
+
+	bgRect := clip.RRect{
+		Rect: image.Rectangle{Max: image.Point{X: tooltipWidth, Y: tooltipHeight}},
+		NE:   3, NW: 3, SE: 3, SW: 3,
+	}.Push(gtx.Ops)
+	paint.Fill(gtx.Ops, color.NRGBA{R: 30, G: 30, B: 30, A: 220})
+	bgRect.Pop()
+
+	innerGtx := gtx
+	innerGtx.Constraints = layout.Exact(image.Point{X: tooltipWidth, Y: tooltipHeight})
+	layout.Inset{Left: unit.Dp(tooltipPaddingX), Right: unit.Dp(tooltipPaddingX)}.Layout(innerGtx, func(gtx layout.Context) layout.Dimensions {
+		return layout.Center.Layout(gtx, label.Layout)
+	})
 }

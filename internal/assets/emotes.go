@@ -10,11 +10,14 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unsafe"
 
 	"stream-guy/internal/download"
 
 	"gioui.org/app"
+	"gioui.org/io/event"
 	"gioui.org/layout"
+	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 	"gioui.org/unit"
 	"gioui.org/widget/material"
@@ -28,6 +31,22 @@ const (
 )
 
 var BlackText = color.NRGBA{R: 0, G: 0, B: 0, A: 255}
+
+// hoverTag is a unique pointer-identity tag used for per-emote pointer input registration.
+// It must have a non-zero size so that each allocation gets a distinct address; Go may
+// return the same pointer for multiple zero-size allocations.
+// Size holds the emote's pixel dimensions; CenterX holds the emote's horizontal center
+// in window coordinates — both updated each frame during layout.
+type hoverTag struct {
+	Size    image.Point
+	CenterX int
+}
+
+type hoverTagKey struct {
+	window uintptr
+	url    string
+	name   string
+}
 
 type scaledCacheKey struct {
 	url        string
@@ -50,6 +69,10 @@ type EmoteManager struct {
 	compositorsMu    sync.RWMutex
 	scaledCache      map[scaledCacheKey]*image.RGBA
 	scaledCacheMu    sync.RWMutex
+
+	// hover state
+	hoverTags   map[hoverTagKey]*hoverTag
+	hoverTagsMu sync.RWMutex
 }
 
 type animationTicker struct {
@@ -71,6 +94,7 @@ func NewEmoteManager(downloadPool *download.Pool) *EmoteManager {
 		animationTickers: make(map[string]*animationTicker),
 		compositors:      make(map[string]*GIFCompositor),
 		scaledCache:      make(map[scaledCacheKey]*image.RGBA),
+		hoverTags:        make(map[hoverTagKey]*hoverTag),
 	}
 }
 
@@ -248,6 +272,31 @@ func (em *EmoteManager) StopAllAnimations() {
 	}
 }
 
+// GetOrCreateHoverTag returns a stable pointer-identity tag for the given (window, emote URL, emote name) triple,
+// used to register and filter per-emote pointer events. Keying on name as well as URL ensures that
+// two different emotes sharing the same image URL get independent hover tags, so each displays
+// the correct tooltip text.
+func (em *EmoteManager) GetOrCreateHoverTag(url string, name string, win *app.Window) *hoverTag {
+	key := hoverTagKey{window: uintptr(unsafe.Pointer(win)), url: url, name: name}
+	em.hoverTagsMu.RLock()
+	t, ok := em.hoverTags[key]
+	em.hoverTagsMu.RUnlock()
+	if ok {
+		return t
+	}
+	em.hoverTagsMu.Lock()
+	defer em.hoverTagsMu.Unlock()
+	if t, ok = em.hoverTags[key]; ok {
+		return t
+	}
+	t = &hoverTag{}
+	em.hoverTags[key] = t
+	return t
+}
+
+// SetHoveredEmote and GetHoveredEmote have been removed; hover state is now
+// managed per-window in the popup.Window struct.
+
 func (em *EmoteManager) getScaledCached(key scaledCacheKey) (*image.RGBA, bool) {
 	em.scaledCacheMu.RLock()
 	defer em.scaledCacheMu.RUnlock()
@@ -348,16 +397,26 @@ func (em *EmoteManager) LayoutMessageWithEmotes(gtx layout.Context, th *material
 		}
 	}
 
+	// cursX tracks the cumulative horizontal offset as children are laid out,
+	// so each emote tag can record its window-space center X.
+	cursX := 0
 	var children []layout.FlexChild
 	for _, segment := range segments {
 		seg := segment
 		if seg.IsEmote {
 			children = append(children, layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-				return em.renderEmoteSegment(gtx, th, seg, window, hasText)
+				dims := em.renderEmoteSegment(gtx, th, seg, window, hasText)
+				// Update the tag's CenterX now that we know the child's width and position.
+				t := em.GetOrCreateHoverTag(seg.ImageURL, seg.Text, window)
+				t.CenterX = cursX + dims.Size.X/2
+				cursX += dims.Size.X
+				return dims
 			}))
 		} else {
 			children = append(children, layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-				return CreateTextLabel(th, seg.Text).Layout(gtx)
+				dims := CreateTextLabel(th, seg.Text).Layout(gtx)
+				cursX += dims.Size.X
+				return dims
 			}))
 		}
 	}
@@ -433,18 +492,30 @@ func (em *EmoteManager) renderEmoteSegment(gtx layout.Context, th *material.Them
 			em.putScaledCached(cacheKey, scaledImg)
 		}
 
+		area := clip.Rect{Max: image.Point{X: scaledWidth, Y: scaledHeight}}.Push(gtx.Ops)
 		imgOp := paint.NewImageOp(scaledImg)
 		imgOp.Add(gtx.Ops)
 		paint.PaintOp{}.Add(gtx.Ops)
+		if !isUnicodeEmoji {
+			t := em.GetOrCreateHoverTag(seg.ImageURL, seg.Text, window)
+			t.Size = image.Point{X: scaledWidth, Y: scaledHeight}
+			event.Op(gtx.Ops, t)
+		}
+		area.Pop()
 
 		return layout.Dimensions{
 			Size: image.Point{X: scaledWidth, Y: scaledHeight},
 		}
 	}
 
+	tag := em.GetOrCreateHoverTag(seg.ImageURL, seg.Text, window)
+	tag.Size = bounds.Size()
+	area := clip.Rect{Max: bounds.Size()}.Push(gtx.Ops)
 	imgOp := paint.NewImageOp(img)
 	imgOp.Add(gtx.Ops)
 	paint.PaintOp{}.Add(gtx.Ops)
+	event.Op(gtx.Ops, tag)
+	area.Pop()
 	return layout.Dimensions{
 		Size: bounds.Size(),
 	}
