@@ -16,7 +16,6 @@ import (
 	"stream-guy/internal/window"
 
 	"gioui.org/app"
-	"gioui.org/f32"
 	"gioui.org/io/clipboard"
 	"gioui.org/io/event"
 	"gioui.org/io/pointer"
@@ -62,10 +61,8 @@ type Window struct {
 	AnimCtx    context.Context
 	AnimCancel context.CancelFunc
 
-	// Command popup fields
 	CommandImage image.Image
 
-	// Photo popup fields
 	PhotoImage image.Image
 	PhotoURL   string
 	PhotoMime  string
@@ -73,16 +70,13 @@ type Window struct {
 	RejectBtn  widget.Clickable
 	OnAccept   func(url, mimeType string)
 
-	// Window positioning
 	InitialX int
 	InitialY int
 	HWND     windows.HWND
 
-	// Per-window emote hover state
-	hoveredEmoteName    string
-	hoveredEmotePos     f32.Point
-	hoveredEmoteSize    image.Point
-	hoveredEmoteCenterX int
+	hoveredEmoteName   string
+	hoveredEmoteSize   image.Point
+	hoveredEmoteWinPos image.Point
 }
 
 func ClampHeight(height int) int {
@@ -334,8 +328,6 @@ func ConfigureFromViewEvent(popup *Window, hwnd windows.HWND, zorder *window.ZOr
 	}()
 }
 
-// HandleEmoteHoverEvents processes pointer Enter/Leave events for all Twitch emote
-// segments and updates the per-window hover state accordingly.
 func HandleEmoteHoverEvents(gtx layout.Context, pw *Window, em *assets.EmoteManager) {
 	if em == nil {
 		return
@@ -360,15 +352,13 @@ func HandleEmoteHoverEvents(gtx layout.Context, pw *Window, em *assets.EmoteMana
 				switch pe.Kind {
 				case pointer.Enter:
 					pw.hoveredEmoteName = seg.Text
-					pw.hoveredEmotePos = pe.Position
 					pw.hoveredEmoteSize = tag.Size
-					pw.hoveredEmoteCenterX = tag.CenterX
+					pw.hoveredEmoteWinPos = tag.WindowPos
 					pw.GioWindow.Invalidate()
 				case pointer.Leave:
 					pw.hoveredEmoteName = ""
-					pw.hoveredEmotePos = f32.Point{}
 					pw.hoveredEmoteSize = image.Point{}
-					pw.hoveredEmoteCenterX = 0
+					pw.hoveredEmoteWinPos = image.Point{}
 					pw.GioWindow.Invalidate()
 				}
 			}
@@ -376,22 +366,17 @@ func HandleEmoteHoverEvents(gtx layout.Context, pw *Window, em *assets.EmoteMana
 	}
 }
 
-// RenderEmoteTooltip draws a small dark tooltip with the emote name centered
-// above the emote. pos is the cursor's window-space position, emoteSize is the
-// emote's pixel dimensions — used to pin the tooltip above the emote top
-// regardless of where within the emote the cursor sits.
-func RenderEmoteTooltip(gtx layout.Context, name string, pos f32.Point, emoteSize image.Point, emoteCenterX int, th *material.Theme) {
+func RenderEmoteTooltip(gtx layout.Context, name string, emoteWinPos image.Point, emoteSize image.Point, th *material.Theme) {
 	const (
 		tooltipPaddingX = 8
 		tooltipHeight   = 24
-		tooltipGap      = 2 // px gap between emote top and tooltip bottom
+		tooltipGap      = 2
 	)
 
 	label := material.Body1(th, name)
 	label.Color = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
 	label.TextSize = unit.Sp(12)
 
-	// Measure text width with unconstrained width so the label reports its natural width.
 	macro := op.Record(gtx.Ops)
 	measureGtx := gtx
 	measureGtx.Constraints = layout.Constraints{
@@ -402,16 +387,10 @@ func RenderEmoteTooltip(gtx layout.Context, name string, pos f32.Point, emoteSiz
 
 	tooltipWidth := dims.Size.X + tooltipPaddingX*2
 
-	// Center tooltip over the emote using the emote's known window-space center X.
+	emoteCenterX := emoteWinPos.X + emoteSize.X/2
 	x := emoteCenterX - tooltipWidth/2
+	y := emoteWinPos.Y - tooltipHeight - tooltipGap
 
-	// Pin tooltip bottom to the emote's top edge: cursor Y is somewhere within the
-	// emote (0..emoteSize.Y), so emote top = cursor Y - (offset within emote).
-	// We conservatively place the tooltip above cursor Y minus the full emote height,
-	// guaranteeing it never overlaps the emote.
-	y := int(pos.Y) - emoteSize.Y - tooltipHeight - tooltipGap
-
-	// Clamp to window bounds.
 	if x+tooltipWidth > gtx.Constraints.Max.X {
 		x = gtx.Constraints.Max.X - tooltipWidth
 	}

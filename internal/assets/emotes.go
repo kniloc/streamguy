@@ -32,14 +32,9 @@ const (
 
 var BlackText = color.NRGBA{R: 0, G: 0, B: 0, A: 255}
 
-// hoverTag is a unique pointer-identity tag used for per-emote pointer input registration.
-// It must have a non-zero size so that each allocation gets a distinct address; Go may
-// return the same pointer for multiple zero-size allocations.
-// Size holds the emote's pixel dimensions; CenterX holds the emote's horizontal center
-// in window coordinates — both updated each frame during layout.
 type hoverTag struct {
-	Size    image.Point
-	CenterX int
+	Size      image.Point
+	WindowPos image.Point
 }
 
 type hoverTagKey struct {
@@ -70,7 +65,6 @@ type EmoteManager struct {
 	scaledCache      map[scaledCacheKey]*image.RGBA
 	scaledCacheMu    sync.RWMutex
 
-	// hover state
 	hoverTags   map[hoverTagKey]*hoverTag
 	hoverTagsMu sync.RWMutex
 }
@@ -272,10 +266,6 @@ func (em *EmoteManager) StopAllAnimations() {
 	}
 }
 
-// GetOrCreateHoverTag returns a stable pointer-identity tag for the given (window, emote URL, emote name) triple,
-// used to register and filter per-emote pointer events. Keying on name as well as URL ensures that
-// two different emotes sharing the same image URL get independent hover tags, so each displays
-// the correct tooltip text.
 func (em *EmoteManager) GetOrCreateHoverTag(url string, name string, win *app.Window) *hoverTag {
 	key := hoverTagKey{window: uintptr(unsafe.Pointer(win)), url: url, name: name}
 	em.hoverTagsMu.RLock()
@@ -293,9 +283,6 @@ func (em *EmoteManager) GetOrCreateHoverTag(url string, name string, win *app.Wi
 	em.hoverTags[key] = t
 	return t
 }
-
-// SetHoveredEmote and GetHoveredEmote have been removed; hover state is now
-// managed per-window in the popup.Window struct.
 
 func (em *EmoteManager) getScaledCached(key scaledCacheKey) (*image.RGBA, bool) {
 	em.scaledCacheMu.RLock()
@@ -384,7 +371,7 @@ type EmoteSegment struct {
 	ImageURL string
 }
 
-func (em *EmoteManager) LayoutMessageWithEmotes(gtx layout.Context, th *material.Theme, segments []EmoteSegment, window *app.Window) layout.Dimensions {
+func (em *EmoteManager) LayoutMessageWithEmotes(gtx layout.Context, th *material.Theme, segments []EmoteSegment, window *app.Window, origin image.Point) layout.Dimensions {
 	if len(segments) == 0 {
 		return layout.Dimensions{}
 	}
@@ -397,8 +384,6 @@ func (em *EmoteManager) LayoutMessageWithEmotes(gtx layout.Context, th *material
 		}
 	}
 
-	// cursX tracks the cumulative horizontal offset as children are laid out,
-	// so each emote tag can record its window-space center X.
 	cursX := 0
 	var children []layout.FlexChild
 	for _, segment := range segments {
@@ -406,9 +391,11 @@ func (em *EmoteManager) LayoutMessageWithEmotes(gtx layout.Context, th *material
 		if seg.IsEmote {
 			children = append(children, layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 				dims := em.renderEmoteSegment(gtx, th, seg, window, hasText)
-				// Update the tag's CenterX now that we know the child's width and position.
 				t := em.GetOrCreateHoverTag(seg.ImageURL, seg.Text, window)
-				t.CenterX = cursX + dims.Size.X/2
+				t.WindowPos = image.Point{
+					X: origin.X + cursX,
+					Y: origin.Y,
+				}
 				cursX += dims.Size.X
 				return dims
 			}))

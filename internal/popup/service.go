@@ -42,17 +42,14 @@ type Service struct {
 	Theme          *material.Theme
 	LoadedFontFace font.FontFace
 
-	// Optional hook; when provided, Create*Popup will be a no-op while paused.
 	IsPaused func() bool
-
-	// Keyword mapping for resolving GIF filenames.
 	Keywords map[string]string
 }
 
 func (s *Service) themeWithFont() *material.Theme {
 	var th material.Theme
 	if s.Theme != nil {
-		th = *s.Theme // copy the struct so we don't mutate the shared theme
+		th = *s.Theme
 	} else {
 		th = *material.NewTheme()
 	}
@@ -504,7 +501,7 @@ func (s *Service) runChatPopup(pw *Window, th *material.Theme) error {
 
 			if s.EmoteManager != nil {
 				if pw.hoveredEmoteName != "" {
-					RenderEmoteTooltip(gtx, pw.hoveredEmoteName, pw.hoveredEmotePos, pw.hoveredEmoteSize, pw.hoveredEmoteCenterX, th)
+					RenderEmoteTooltip(gtx, pw.hoveredEmoteName, pw.hoveredEmoteWinPos, pw.hoveredEmoteSize, th)
 				}
 			}
 
@@ -581,7 +578,9 @@ func (s *Service) resizeWindowToContent(gtx layout.Context, pw *Window, th *mate
 }
 
 func (s *Service) renderChatContent(gtx layout.Context, pw *Window, th *material.Theme) layout.Dimensions {
+	paddingPx := gtx.Dp(unit.Dp(render.MessagePadding))
 	return layout.UniformInset(unit.Dp(render.MessagePadding)).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+		contentMaxY := gtx.Constraints.Max.Y
 		return layout.Flex{
 			Axis:      layout.Vertical,
 			Alignment: layout.Start,
@@ -609,7 +608,11 @@ func (s *Service) renderChatContent(gtx layout.Context, pw *Window, th *material
 				if s.EmoteManager == nil {
 					return layout.Dimensions{}
 				}
-				return s.EmoteManager.LayoutMessageWithEmotes(gtx, th, pw.MessageSegments, pw.GioWindow)
+				msgOrigin := image.Point{
+					X: paddingPx,
+					Y: paddingPx + (contentMaxY - gtx.Constraints.Max.Y),
+				}
+				return s.EmoteManager.LayoutMessageWithEmotes(gtx, th, pw.MessageSegments, pw.GioWindow, msgOrigin)
 			}),
 		)
 	})
