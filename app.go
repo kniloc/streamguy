@@ -115,6 +115,7 @@ func (a *App) HandleRewardRedemption(data json.RawMessage) {
 		return
 	}
 
+	userID := rData.UserID
 	username := rData.Username
 	redemption := rData.Reward.Title
 	log.Printf("Redemption: %s", redemption)
@@ -160,9 +161,8 @@ func (a *App) HandleRewardRedemption(data json.RawMessage) {
 		if turnsStr != "" && a.dbPool != nil {
 			turns := 0
 			fmt.Sscanf(turnsStr, "%d", &turns)
-			formattedUsername := strings.ToLower(username)
-			if err := db.UpdateNumberOfTurns(a.ctx, a.dbPool, turns, formattedUsername); err != nil {
-				log.Printf("Failed to update turns for %s: %v", formattedUsername, err)
+			if err := db.UpdateNumberOfTurns(a.ctx, a.dbPool, turns, userID, username); err != nil {
+				log.Printf("Failed to update turns for %s (%s): %v", username, userID, err)
 			}
 		}
 	}
