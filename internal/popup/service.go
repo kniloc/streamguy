@@ -7,6 +7,7 @@ import (
 	"image/color"
 	"image/gif"
 	"log"
+	"sync"
 	"time"
 
 	"gioui.org/app"
@@ -44,19 +45,26 @@ type Service struct {
 
 	IsPaused func() bool
 	Keywords map[string]string
+
+	cachedTheme     *material.Theme
+	cachedThemeOnce sync.Once
 }
 
 func (s *Service) themeWithFont() *material.Theme {
-	var th material.Theme
-	if s.Theme != nil {
-		th = *s.Theme
-	} else {
-		th = *material.NewTheme()
-	}
-	if s.LoadedFontFace.Face != nil {
-		th.Shaper = text.NewShaper(text.WithCollection([]font.FontFace{s.LoadedFontFace}))
-	}
-	return &th
+	s.cachedThemeOnce.Do(func() {
+		var th material.Theme
+		if s.Theme != nil {
+			th = *s.Theme
+		} else {
+			th = *material.NewTheme()
+		}
+
+		if s.LoadedFontFace.Face != nil {
+			th.Shaper = text.NewShaper(text.WithCollection([]font.FontFace{s.LoadedFontFace}))
+		}
+		s.cachedTheme = &th
+	})
+	return s.cachedTheme
 }
 
 func (s *Service) paused() bool {
@@ -383,7 +391,7 @@ func (s *Service) prefetchAssets(segments []assets.EmoteSegment, badges []render
 
 	if s.EmoteManager != nil {
 		for _, seg := range segments {
-			if seg.IsEmote && IsValidEmoteURL(seg.ImageURL) {
+			if seg.IsEmote && assets.IsValidEmoteURL(seg.ImageURL) {
 				s.EmoteManager.PrefetchEmote(seg.ImageURL)
 			}
 		}

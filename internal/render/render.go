@@ -14,7 +14,6 @@ import (
 )
 
 const (
-	BadgeSize      = 18
 	BadgeSpacing   = 4
 	MessagePadding = 16
 	MessageSpacing = 8
@@ -22,7 +21,7 @@ const (
 
 var (
 	SilverBackground = color.NRGBA{R: 0xbd, G: 0xbd, B: 0xbd, A: 255}
-	BlackText        = color.NRGBA{R: 0, G: 0, B: 0, A: 255}
+	BlackText        = assets.BlackText
 )
 
 func GetLuminance(c color.NRGBA) float64 {
@@ -112,7 +111,7 @@ func LayoutBadges(gtx layout.Context, badges []Badge, window *app.Window, badgeM
 			img, err := badgeManager.GetBadge(b.ImageURL, window)
 			if err != nil {
 				return layout.Dimensions{
-					Size: image.Point{X: BadgeSize, Y: BadgeSize},
+					Size: image.Point{X: assets.BadgeSize, Y: assets.BadgeSize},
 				}
 			}
 
@@ -121,7 +120,7 @@ func LayoutBadges(gtx layout.Context, badges []Badge, window *app.Window, badgeM
 			paint.PaintOp{}.Add(gtx.Ops)
 
 			return layout.Dimensions{
-				Size: image.Point{X: BadgeSize, Y: BadgeSize},
+				Size: image.Point{X: assets.BadgeSize, Y: assets.BadgeSize},
 			}
 		}))
 

@@ -6,7 +6,6 @@ import (
 	"image/color"
 	"image/gif"
 	"io"
-	"log"
 	"strings"
 	"sync"
 	"time"
@@ -228,26 +227,6 @@ func AnimateGif(popup *Window, gifImg *gif.GIF) {
 
 		popup.GioWindow.Invalidate()
 	}
-}
-
-func IsValidEmoteURL(url string) bool {
-	if url == "" {
-		return false
-	}
-
-	if strings.Contains(url, assets.TwemojiCDNPath) {
-		return true
-	}
-
-	if strings.HasSuffix(url, "/.png") ||
-		strings.HasSuffix(url, "/.jpg") ||
-		strings.HasSuffix(url, "/.gif") ||
-		strings.HasSuffix(url, "/.webp") {
-		log.Printf("Skipping malformed emote URL: %s", url)
-		return false
-	}
-
-	return true
 }
 
 func ValidatePhotoURL(url string) (mimeType string, valid bool) {

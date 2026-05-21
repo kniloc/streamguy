@@ -37,9 +37,6 @@ const (
 
 	wsPopup = 0x80000000
 
-	swpNoActivate = 0x0010
-	swpShowWindow = 0x0040
-
 	ulwAlpha = 0x00000002
 
 	acSrcOver  = 0x00
@@ -52,6 +49,13 @@ const (
 	WmOverlayModeChange = WmApp + 1
 	WmOverlayRedraw     = WmApp + 2
 
+	swpNoSize       = 0x0001
+	swpNoMove       = 0x0002
+	swpNoZOrder     = 0x0004
+	swpNoActivate   = 0x0010
+	swpFrameChanged = 0x0020
+	swpShowWindow   = 0x0040
+
 	WmSetCursor = 0x0020
 	WmNCHitTest = 0x0084
 
@@ -62,6 +66,7 @@ const (
 	WmMButtonDown = 0x0207
 	WmMouseWheel  = 0x020A
 	HtTransparent = ^uintptr(0)
+	gwlExStyle    = ^uintptr(19)
 
 	VkAlt    = 0x12
 	idcCross = 32515

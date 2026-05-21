@@ -173,8 +173,9 @@ func (a *App) findMatchingKeyword(message string) string {
 		return ""
 	}
 
-	if _, ok := a.config.Keywords[strings.ToLower(message)]; ok {
-		return message
+	lower := strings.ToLower(message)
+	if _, ok := a.config.Keywords[lower]; ok {
+		return lower
 	}
 	return ""
 }

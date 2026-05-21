@@ -75,6 +75,16 @@ func Load() *Config {
 	return cfg
 }
 
+func (c *Config) Validate() error {
+	if c.StreamerbotHost == "" {
+		return fmt.Errorf("STREAMERBOT_HOST is not set")
+	}
+	if c.StreamerbotPort == "" {
+		return fmt.Errorf("STREAMERBOT_PORT is not set")
+	}
+	return nil
+}
+
 func (c *Config) normalizeKeywords() {
 	normalized := make(map[string]string, len(c.Keywords))
 	for k, v := range c.Keywords {

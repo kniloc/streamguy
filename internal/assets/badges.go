@@ -7,6 +7,7 @@ import (
 	"stream-guy/internal/download"
 
 	"gioui.org/app"
+	xdraw "golang.org/x/image/draw"
 )
 
 const BadgeSize = 18
@@ -60,7 +61,8 @@ func (bm *BadgeManager) downloadBadge(url string) error {
 			return fmt.Errorf("no badge image data")
 		}
 
-		scaled := ScaleImage(img, BadgeSize, BadgeSize)
+		scaled := image.NewRGBA(image.Rect(0, 0, BadgeSize, BadgeSize))
+		xdraw.BiLinear.Scale(scaled, scaled.Bounds(), img, img.Bounds(), xdraw.Src, nil)
 		bm.SetCached(url, scaled)
 
 		return nil

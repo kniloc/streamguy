@@ -61,6 +61,9 @@ func NewApp() *App {
 	}
 
 	application.config = config.Load()
+	if vErr := application.config.Validate(); vErr != nil {
+		log.Fatalf("Invalid configuration: %v", vErr)
+	}
 
 	application.downloadPool = download.NewPool(defaultDownloadWorkers())
 

@@ -183,18 +183,18 @@ func (o *Window) ApplyClickThrough(enabled bool) {
 		return
 	}
 
-	ex, _, _ := window.ProcGetWindowLongPtr.Call(uintptr(o.Hwnd), ^uintptr(19))
+	ex, _, _ := window.ProcGetWindowLongPtr.Call(uintptr(o.Hwnd), gwlExStyle)
 	if enabled {
 		ex |= wsExTransparent
 	} else {
 		ex &^= wsExTransparent
 	}
-	window.ProcSetWindowLongPtr.Call(uintptr(o.Hwnd), ^uintptr(19), ex)
+	window.ProcSetWindowLongPtr.Call(uintptr(o.Hwnd), gwlExStyle, ex)
 	window.ProcSetWindowPos.Call(
 		uintptr(o.Hwnd),
 		0,
 		0, 0, 0, 0,
-		uintptr(0x0002|0x0001|0x0004|0x0020|swpNoActivate),
+		uintptr(swpNoMove|swpNoSize|swpNoZOrder|swpFrameChanged|swpNoActivate),
 	)
 }
 

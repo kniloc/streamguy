@@ -295,7 +295,10 @@ func (em *EmoteManager) putScaledCached(key scaledCacheKey, img *image.RGBA) {
 	em.scaledCacheMu.Lock()
 	defer em.scaledCacheMu.Unlock()
 	if len(em.scaledCache) >= maxScaledCacheEntries {
-		em.scaledCache = make(map[scaledCacheKey]*image.RGBA)
+		for k := range em.scaledCache {
+			delete(em.scaledCache, k)
+			break
+		}
 	}
 	em.scaledCache[key] = img
 }

@@ -326,32 +326,8 @@ func (pm *PlacementManager) FindNonOverlappingPosition(windowWidth, windowHeight
 
 	pm.initializeGrid()
 
-	maxX := pm.screenWidth - windowWidth
-	maxY := pm.screenHeight - windowHeight
+	x, y = pm.findPosition(windowWidth, windowHeight)
 
-	if maxX < 0 || maxY < 0 {
-		x = pm.workAreaX
-		y = pm.workAreaY
-		goto placeWindow
-	}
-
-	if pm.Rng == nil {
-		pm.Rng = rand.New(rand.NewSource(1))
-	}
-
-	for range PositionFindMaxAttempts {
-		x = pm.workAreaX + pm.Rng.Intn(maxX+1)
-		y = pm.workAreaY + pm.Rng.Intn(maxY+1)
-
-		if pm.canPlaceWindowAtPosition(x, y, windowWidth, windowHeight) {
-			goto placeWindow
-		}
-	}
-
-	x = pm.workAreaX + pm.Rng.Intn(maxX+1)
-	y = pm.workAreaY + pm.Rng.Intn(maxY+1)
-
-placeWindow:
 	pm.nextWindowID++
 	windowID := pm.nextWindowID
 
@@ -366,6 +342,31 @@ placeWindow:
 	pm.markCellsOccupied(rect, windowID)
 
 	return x, y
+}
+
+func (pm *PlacementManager) findPosition(windowWidth, windowHeight int) (int, int) {
+	maxX := pm.screenWidth - windowWidth
+	maxY := pm.screenHeight - windowHeight
+
+	if maxX < 0 || maxY < 0 {
+		return pm.workAreaX, pm.workAreaY
+	}
+
+	if pm.Rng == nil {
+		pm.Rng = rand.New(rand.NewSource(1))
+	}
+
+	for range PositionFindMaxAttempts {
+		x := pm.workAreaX + pm.Rng.Intn(maxX+1)
+		y := pm.workAreaY + pm.Rng.Intn(maxY+1)
+		if pm.canPlaceWindowAtPosition(x, y, windowWidth, windowHeight) {
+			return x, y
+		}
+	}
+
+	// fallback: random position, overlapping allowed
+	return pm.workAreaX + pm.Rng.Intn(maxX+1),
+		pm.workAreaY + pm.Rng.Intn(maxY+1)
 }
 
 func (pm *PlacementManager) RemoveWindow(x, y int) {
