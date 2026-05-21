@@ -154,7 +154,9 @@ func (c *Client) Listen(ctx context.Context) {
 
 func (c *Client) Close() {
 	if c.conn != nil {
-		c.conn.Close()
+		if err := c.conn.Close(); err != nil {
+			log.Printf("Error closing Streamer.bot connection: %v", err)
+		}
 		c.Connected.Store(false)
 	}
 }

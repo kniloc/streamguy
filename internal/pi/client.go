@@ -67,7 +67,7 @@ func (c *Client) SendImage(url, mimeType string) (*ImageResponse, error) {
 		}
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var result ImageResponse
 	if respErr := json.NewDecoder(resp.Body).Decode(&result); respErr != nil {
@@ -97,7 +97,7 @@ func (c *Client) ClearImages() error {
 	if err != nil {
 		return fmt.Errorf("request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 400 {
 		return fmt.Errorf("pi returned status %d", resp.StatusCode)

@@ -67,7 +67,7 @@ func getPlateTemplate(region string) (*image.RGBA, []image.Rectangle, bool) {
 			log.Printf("Failed to open plate image for %s: %v", region, err)
 			return nil, nil, false
 		}
-		defer inputFile.Close()
+		defer func() { _ = inputFile.Close() }()
 
 		img, err := png.Decode(inputFile)
 		if err != nil {
@@ -345,7 +345,7 @@ func GenerateLicensePlate(ctx Context) {
 			Dot:  fixed.Point26_6{X: 0, Y: -glyphTop},
 		}
 		drawer.DrawString(segments[i])
-		face.Close()
+		_ = face.Close()
 
 		// scale the temporary image to fill the entire marker region
 		xdraw.BiLinear.Scale(rgba, region, tmp, tmp.Bounds(), xdraw.Over, nil)

@@ -32,7 +32,7 @@ const (
 
 var BlackText = color.NRGBA{R: 0, G: 0, B: 0, A: 255}
 
-type hoverTag struct {
+type HoverTag struct {
 	Size      image.Point
 	WindowPos image.Point
 }
@@ -65,7 +65,7 @@ type EmoteManager struct {
 	scaledCache      map[scaledCacheKey]*image.RGBA
 	scaledCacheMu    sync.RWMutex
 
-	hoverTags   map[hoverTagKey]*hoverTag
+	hoverTags   map[hoverTagKey]*HoverTag
 	hoverTagsMu sync.RWMutex
 }
 
@@ -88,7 +88,7 @@ func NewEmoteManager(downloadPool *download.Pool) *EmoteManager {
 		animationTickers: make(map[string]*animationTicker),
 		compositors:      make(map[string]*GIFCompositor),
 		scaledCache:      make(map[scaledCacheKey]*image.RGBA),
-		hoverTags:        make(map[hoverTagKey]*hoverTag),
+		hoverTags:        make(map[hoverTagKey]*HoverTag),
 	}
 }
 
@@ -128,7 +128,7 @@ func (em *EmoteManager) PrefetchEmote(url string) {
 		return
 	}
 
-	em.downloadEmote(url)
+	_ = em.downloadEmote(url)
 }
 
 func (em *EmoteManager) downloadEmote(url string) error {
@@ -266,7 +266,7 @@ func (em *EmoteManager) StopAllAnimations() {
 	}
 }
 
-func (em *EmoteManager) GetOrCreateHoverTag(url string, name string, win *app.Window) *hoverTag {
+func (em *EmoteManager) GetOrCreateHoverTag(url string, name string, win *app.Window) *HoverTag {
 	key := hoverTagKey{window: uintptr(unsafe.Pointer(win)), url: url, name: name}
 	em.hoverTagsMu.RLock()
 	t, ok := em.hoverTags[key]
@@ -279,7 +279,7 @@ func (em *EmoteManager) GetOrCreateHoverTag(url string, name string, win *app.Wi
 	if t, ok = em.hoverTags[key]; ok {
 		return t
 	}
-	t = &hoverTag{}
+	t = &HoverTag{}
 	em.hoverTags[key] = t
 	return t
 }

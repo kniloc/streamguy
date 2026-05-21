@@ -160,7 +160,9 @@ func (a *App) HandleRewardRedemption(data json.RawMessage) {
 		turnsStr := re.FindString(redemption)
 		if turnsStr != "" && a.dbPool != nil {
 			turns := 0
-			fmt.Sscanf(turnsStr, "%d", &turns)
+			if _, err := fmt.Sscanf(turnsStr, "%d", &turns); err != nil {
+				log.Printf("Failed to parse turns from %q: %v", turnsStr, err)
+			}
 			if err := db.UpdateNumberOfTurns(a.ctx, a.dbPool, turns, userID, username); err != nil {
 				log.Printf("Failed to update turns for %s (%s): %v", username, userID, err)
 			}
@@ -175,7 +177,7 @@ func (a *App) findMatchingKeyword(message string) string {
 
 	lower := strings.ToLower(message)
 	if _, ok := a.config.Keywords[lower]; ok {
-		return lower
+		return message
 	}
 	return ""
 }

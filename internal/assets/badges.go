@@ -45,7 +45,7 @@ func (bm *BadgeManager) Prefetch(url string) {
 		return
 	}
 
-	bm.downloadBadge(url)
+	_ = bm.downloadBadge(url)
 }
 
 func (bm *BadgeManager) downloadBadge(url string) error {

@@ -154,7 +154,7 @@ func (p *Pool) downloadImage(url string) *Result {
 		result.Error = fmt.Errorf("failed to download: %w", err)
 		return result
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 
 	if res.StatusCode >= 500 {
 		result.Error = fmt.Errorf("server error: %d", res.StatusCode)

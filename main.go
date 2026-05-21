@@ -199,7 +199,7 @@ func (a *App) buildControlPanelLayout(gtx layout.Context, th *material.Theme, ws
 	}
 
 	if a.clearImagesBtn.Clicked(gtx) {
-		a.piClient.ClearImages()
+		_ = a.piClient.ClearImages()
 	}
 
 	pauseText := "Pause Popups"
