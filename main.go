@@ -152,8 +152,8 @@ func main() {
 					window.SetWindowTopmost(hwnd)
 					overlayHwnd := window.FindWindowByTitleCached(overlay.WindowTitle)
 					if overlayHwnd != 0 {
-						x, y, w, h := window.GetPrimaryMonitorArea()
-						window.SetOverlayBoundsBelow(overlayHwnd, hwnd, x, y, w, h)
+						x, y, width, height := window.GetPrimaryMonitorArea()
+						window.SetOverlayBoundsBelow(overlayHwnd, hwnd, x, y, width, height)
 						return
 					}
 				}
