@@ -190,7 +190,7 @@ func (a *App) buildControlPanelLayout(gtx layout.Context, th *material.Theme, ws
 
 	leftPadding := layout.Inset{Left: unit.Dp(10)}
 
-	if a.clearAllBtn.Clicked(gtx) {
+	if a.clearPopupsBtn.Clicked(gtx) {
 		a.closeAllWindows()
 	}
 
@@ -199,7 +199,13 @@ func (a *App) buildControlPanelLayout(gtx layout.Context, th *material.Theme, ws
 	}
 
 	if a.clearImagesBtn.Clicked(gtx) {
-		_ = a.piClient.ClearImages()
+		if a.piClient != nil {
+			if err := a.piClient.ClearImages(); err != nil {
+				log.Printf("failed to clear pi images: %v", err)
+			}
+		} else {
+			log.Printf("Pi client is not configured")
+		}
 	}
 
 	pauseText := "Pause Popups"
@@ -230,23 +236,27 @@ func (a *App) buildControlPanelLayout(gtx layout.Context, th *material.Theme, ws
 			return layout.Spacer{Height: unit.Dp(SpacerHeight)}.Layout(gtx)
 		}),
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			return layout.Flex{
-				Axis:    layout.Horizontal,
-				Spacing: layout.SpaceEvenly,
-			}.Layout(gtx,
+			children := []layout.FlexChild{
 				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					btn := material.Button(th, &a.clearAllBtn, "Clear All")
+					btn := material.Button(th, &a.clearPopupsBtn, "Clear Popups")
 					return btn.Layout(gtx)
 				}),
 				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 					btn := material.Button(th, &a.pauseResumeBtn, pauseText)
 					return btn.Layout(gtx)
 				}),
-				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			}
+			if a.piClient != nil {
+				children = append(children, layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 					btn := material.Button(th, &a.clearImagesBtn, "Clear Images")
 					return btn.Layout(gtx)
-				}),
-			)
+				}))
+			}
+
+			return layout.Flex{
+				Axis:    layout.Horizontal,
+				Spacing: layout.SpaceEvenly,
+			}.Layout(gtx, children...)
 		}),
 	)
 }

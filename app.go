@@ -58,7 +58,7 @@ type App struct {
 	// Control state
 	paused         bool
 	pausedMu       sync.RWMutex
-	clearAllBtn    widget.Clickable
+	clearPopupsBtn widget.Clickable
 	pauseResumeBtn widget.Clickable
 	clearImagesBtn widget.Clickable
 
@@ -224,6 +224,8 @@ func (a *App) Shutdown() {
 		if a.streamerBotClient != nil {
 			a.streamerBotClient.Close()
 		}
+
+		tts.Cleanup()
 
 		if a.downloadPool != nil {
 			a.downloadPool.Close()

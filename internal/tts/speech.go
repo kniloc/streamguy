@@ -12,6 +12,7 @@ var (
 	once      sync.Once
 	initError error
 	instance  *Speech
+	cleanupMu sync.Mutex
 )
 
 const (
@@ -48,6 +49,18 @@ func InitSpeech() error {
 
 func GetSpeech() *Speech {
 	return instance
+}
+
+func Cleanup() {
+	cleanupMu.Lock()
+	defer cleanupMu.Unlock()
+
+	if instance != nil {
+		_ = instance.Stop()
+		instance = nil
+	}
+
+	ole.CoUninitialize()
 }
 
 func (sp *Speech) Speak(text string) error {
