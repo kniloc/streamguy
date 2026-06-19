@@ -87,7 +87,7 @@ func (s *Service) CreateChatPopup(username string, userColor color.NRGBA, badges
 
 	pw := &Window{
 		GioWindow:       new(app.Window),
-		Title:           time.Now().Format("2006-01-02 15:04:05.0"),
+		Title:           time.Now().Format("Jan 02 15:04:05.0"),
 		Username:        username,
 		UserColor:       userColor,
 		Badges:          badges,
@@ -129,7 +129,7 @@ func (s *Service) CreateGifPopup(keyword string, message string) error {
 
 	pw := &Window{
 		GioWindow: new(app.Window),
-		Title:     time.Now().Format("2006-01-02 15:04:05.0"),
+		Title:     time.Now().Format("Jan 02 15:04:05.0"),
 		Message:   message,
 		StartTime: time.Now(),
 	}
@@ -178,7 +178,7 @@ func (s *Service) CreateCommandPopup(username string, message string, img image.
 
 	pw := &Window{
 		GioWindow:    new(app.Window),
-		Title:        time.Now().Format("2006-01-02 15:04:05.0"),
+		Title:        time.Now().Format("Jan 02 15:04:05.0"),
 		Username:     username,
 		Message:      message,
 		CommandImage: img,
@@ -214,7 +214,7 @@ func (s *Service) CreatePhotoPopup(imageURL string, onAccept func(url, mimeType 
 
 	pw := &Window{
 		GioWindow: new(app.Window),
-		Title:     time.Now().Format("2006-01-02 15:04:05.0"),
+		Title:     time.Now().Format("Jan 02 15:04:05.0"),
 		PhotoURL:  imageURL,
 		PhotoMime: mimeType,
 		OnAccept:  onAccept,
