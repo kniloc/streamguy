@@ -10,6 +10,7 @@ import (
 	"os"
 	"runtime"
 	"stream-guy/internal/command"
+	"stream-guy/internal/music"
 	"stream-guy/internal/tts"
 	"time"
 
@@ -121,6 +122,13 @@ func NewApp() *App {
 
 	if application.config.PiURL != "" {
 		application.piClient = pi.NewClient(application.config.PiURL)
+	}
+
+	player, err := music.NewPlayer(application.config.SoundFontPath)
+	if err != nil {
+		log.Printf("Warning: failed to init music player: %v", err)
+	} else {
+		application.musicPlayer = player
 	}
 
 	return application

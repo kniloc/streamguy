@@ -14,6 +14,7 @@ type Config struct {
 	StreamerbotPort string
 	PiURL           string
 	PostgresURL     string
+	SoundFontPath   string
 	Verbose         bool
 	Keywords        map[string]string  `json:"keywords"`
 	Commands        map[string]Command `json:"commands"`
@@ -61,6 +62,9 @@ func Load() *Config {
 	}
 	if pgURL := os.Getenv("POSTGRES_URL"); pgURL != "" {
 		cfg.PostgresURL = pgURL
+	}
+	if soundFont := os.Getenv("SOUNDFONT_PATH"); soundFont != "" {
+		cfg.SoundFontPath = soundFont
 	}
 
 	cfg.normalizeKeywords()

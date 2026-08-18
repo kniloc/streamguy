@@ -7,6 +7,7 @@ import (
 	"log"
 	"regexp"
 	"stream-guy/internal/command"
+	"stream-guy/internal/music"
 	"stream-guy/internal/render"
 	"stream-guy/internal/tts"
 	"strings"
@@ -49,6 +50,7 @@ type App struct {
 	piClient        *pi.Client
 	dbPool          *pgxpool.Pool
 	commandRegistry *command.Registry
+	musicPlayer     *music.Player
 
 	// Lifetime
 	ctx          context.Context
@@ -155,6 +157,29 @@ func (a *App) HandleRewardRedemption(data json.RawMessage) {
 		}
 	}
 
+	if strings.Contains(redemption, "Tunes") {
+		userInput := strings.TrimSpace(rData.UserInput)
+		if userInput == "" {
+			log.Printf("Tunes: %s provided no input", username)
+			return
+		}
+		if a.musicPlayer == nil {
+			log.Printf("Tunes: music player not available")
+			return
+		}
+		score, err := music.Parse(userInput)
+		if err != nil {
+			log.Printf("Tunes: invalid notation from %s: %v", username, err)
+			return
+		}
+		log.Printf("Tunes: playing %d track(s) for %s", len(score.Tracks), username)
+		go func() {
+			if err := a.musicPlayer.Play(score); err != nil {
+				log.Printf("Tunes: playback error: %v", err)
+			}
+		}()
+	}
+
 	if strings.Contains(redemption, "TreeShaker") {
 		re := regexp.MustCompile(`\d+`)
 		turnsStr := re.FindString(redemption)
@@ -233,6 +258,10 @@ func (a *App) Shutdown() {
 
 		if a.dbPool != nil {
 			a.dbPool.Close()
+		}
+
+		if a.musicPlayer != nil {
+			a.musicPlayer.Close()
 		}
 	})
 }
