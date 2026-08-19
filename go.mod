@@ -1,6 +1,6 @@
 module stream-guy
 
-go 1.26.4
+go 1.27
 
 require (
 	gioui.org v0.10.2
