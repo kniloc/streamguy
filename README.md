@@ -15,7 +15,7 @@ A Windows desktop application for Twitch streamers that displays interactive cha
 ## Requirements
 
 - Windows 10+
-- Go 1.26+
+- Go 1.27+
 - [Streamer.bot](https://streamer.bot/) running with WebSocket server enabled
 
 ## Configuration
