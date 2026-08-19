@@ -77,14 +77,14 @@ func (a *App) HandleChatMessage(data json.RawMessage, timestamp string) {
 
 	userID := msgData.User.ID
 	username := msgData.User.DisplayName
-	message := strings.TrimSpace(msgData.Message.Message)
+	message := strings.TrimSpace(msgData.Text)
 	if strings.HasPrefix(message, "!") {
 		if a.commandRegistry != nil {
 			a.commandRegistry.Dispatch(message, userID, username)
 		}
 		return
 	}
-	emotesTag := msgData.Message.Emotes
+	emotesTag := msgData.Emotes
 	if a.config.Verbose {
 		log.Printf("Chat: %s: %s", username, message)
 	}
