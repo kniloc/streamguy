@@ -3,8 +3,8 @@ package streamerbot
 import "stream-guy/internal/render"
 
 type ChatMessageData struct {
-	Text   string         `json:"text"`
-	Emotes []render.Emote `json:"emotes"`
+	Text  string               `json:"text"`
+	Parts []render.MessagePart `json:"parts"`
 
 	User struct {
 		Badges      []BadgeData `json:"badges"`

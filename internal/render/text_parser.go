@@ -8,13 +8,12 @@ import (
 	"stream-guy/internal/assets"
 )
 
-type Emote struct {
-	ID         string `json:"id"`
-	Type       string `json:"type"`
-	Name       string `json:"name"`
-	StartIndex int    `json:"startIndex"`
-	EndIndex   int    `json:"endIndex"`
-	ImageURL   string `json:"imageUrl"`
+type MessagePart struct {
+	Type      string `json:"type"`
+	Text      string `json:"text"`
+	ImageURL  string `json:"imageURL"`
+	Source    string `json:"source"`
+	ZeroWidth bool   `json:"zeroWidth"`
 }
 
 type TextParser struct{}
@@ -23,32 +22,38 @@ func NewTextParser() *TextParser {
 	return &TextParser{}
 }
 
-func (tp *TextParser) Parse(message string, twitchEmotes []Emote) []assets.EmoteSegment {
-	validEmotes := tp.filterValidEmotes(twitchEmotes)
-
-	if len(validEmotes) == 0 {
-		segments := tp.parseUnicodeEmojis(message)
-		if len(segments) == 0 {
-			return []assets.EmoteSegment{{IsEmote: false, Text: message}}
-		}
-		return segments
+func (tp *TextParser) ParseFromParts(parts []MessagePart) []assets.EmoteSegment {
+	if len(parts) == 0 {
+		return []assets.EmoteSegment{}
 	}
 
-	return tp.mergeEmotesAndEmojis(message, validEmotes)
-}
-
-func (tp *TextParser) filterValidEmotes(emotes []Emote) []Emote {
-	var valid []Emote
-	for _, e := range emotes {
-		if e.Type == "Twemoji" {
-			continue
-		}
-
-		if tp.isValidEmoteURL(e.ImageURL) {
-			valid = append(valid, e)
+	var segments []assets.EmoteSegment
+	for _, part := range parts {
+		switch part.Type {
+		case "emote":
+			if !tp.isValidEmoteURL(part.ImageURL) {
+				segments = append(segments, assets.EmoteSegment{IsEmote: false, Text: part.Text})
+				continue
+			}
+			segments = append(segments, assets.EmoteSegment{
+				IsEmote:  true,
+				Text:     part.Text,
+				ImageURL: part.ImageURL,
+			})
+		case "text":
+			emojiSegs := tp.parseUnicodeEmojis(part.Text)
+			if len(emojiSegs) > 0 {
+				segments = append(segments, emojiSegs...)
+			} else {
+				segments = append(segments, assets.EmoteSegment{IsEmote: false, Text: part.Text})
+			}
+		default:
+			if part.Text != "" {
+				segments = append(segments, assets.EmoteSegment{IsEmote: false, Text: part.Text})
+			}
 		}
 	}
-	return valid
+	return segments
 }
 
 func (tp *TextParser) isValidEmoteURL(url string) bool {
@@ -156,74 +161,4 @@ func (tp *TextParser) createEmojiSegment(runes []rune) assets.EmoteSegment {
 		Text:     emojiText,
 		ImageURL: url,
 	}
-}
-
-func (tp *TextParser) mergeEmotesAndEmojis(message string, twitchEmotes []Emote) []assets.EmoteSegment {
-	var segments []assets.EmoteSegment
-	bytePos := 0
-	charPos := 0
-
-	emoteMap := make(map[int]Emote)
-	for _, e := range twitchEmotes {
-		emoteMap[e.StartIndex] = e
-	}
-
-	for bytePos < len(message) {
-		if emote, exists := emoteMap[charPos]; exists {
-			segments = append(segments, assets.EmoteSegment{
-				IsEmote:  true,
-				Text:     emote.Name,
-				ImageURL: emote.ImageURL,
-			})
-
-			emoteLen := emote.EndIndex - emote.StartIndex + 1
-			for range emoteLen {
-				_, size := utf8.DecodeRuneInString(message[bytePos:])
-				bytePos += size
-				charPos++
-			}
-			continue
-		}
-
-		r, size := utf8.DecodeRuneInString(message[bytePos:])
-		if tp.isEmoji(r) {
-			var emojiSequence []rune
-			for bytePos < len(message) {
-				r, size = utf8.DecodeRuneInString(message[bytePos:])
-				if !tp.isEmoji(r) {
-					break
-				}
-				emojiSequence = append(emojiSequence, r)
-				bytePos += size
-				charPos++
-			}
-			segments = append(segments, tp.createEmojiSegment(emojiSequence))
-			continue
-		}
-
-		var textBuilder strings.Builder
-		for bytePos < len(message) {
-			if _, exists := emoteMap[charPos]; exists {
-				break
-			}
-
-			r, size = utf8.DecodeRuneInString(message[bytePos:])
-			if tp.isEmoji(r) {
-				break
-			}
-
-			textBuilder.WriteRune(r)
-			bytePos += size
-			charPos++
-		}
-
-		if textBuilder.Len() > 0 {
-			segments = append(segments, assets.EmoteSegment{
-				IsEmote: false,
-				Text:    textBuilder.String(),
-			})
-		}
-	}
-
-	return segments
 }

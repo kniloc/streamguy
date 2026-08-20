@@ -74,7 +74,7 @@ func (s *Service) paused() bool {
 	return s.IsPaused()
 }
 
-func (s *Service) CreateChatPopup(username string, userColor color.NRGBA, badges []render.Badge, message string, emotesTag []render.Emote) error {
+func (s *Service) CreateChatPopup(username string, userColor color.NRGBA, badges []render.Badge, message string, parts []render.MessagePart) error {
 	if s.paused() {
 		return nil
 	}
@@ -82,7 +82,7 @@ func (s *Service) CreateChatPopup(username string, userColor color.NRGBA, badges
 		return fmt.Errorf("popup service not initialized")
 	}
 
-	segments := s.TextParser.Parse(message, emotesTag)
+	segments := s.TextParser.ParseFromParts(parts)
 	s.prefetchAssets(segments, badges)
 
 	pw := &Window{

@@ -84,7 +84,7 @@ func (a *App) HandleChatMessage(data json.RawMessage, timestamp string) {
 		}
 		return
 	}
-	emotesTag := msgData.Emotes
+
 	if a.config.Verbose {
 		log.Printf("Chat: %s: %s", username, message)
 	}
@@ -104,7 +104,7 @@ func (a *App) HandleChatMessage(data json.RawMessage, timestamp string) {
 
 	badges := streamerbot.ConvertBadges(msgData.User.Badges)
 	if a.popupService != nil {
-		if err := a.popupService.CreateChatPopup(username, userColor, badges, message, emotesTag); err != nil {
+		if err := a.popupService.CreateChatPopup(username, userColor, badges, message, msgData.Parts); err != nil {
 			log.Printf("[%s] Failed to create chat popup: %v", streamerbot.FormatTimeStamp(timestamp), err)
 		}
 	}
