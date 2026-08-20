@@ -11,7 +11,7 @@ import (
 type MessagePart struct {
 	Type      string `json:"type"`
 	Text      string `json:"text"`
-	ImageURL  string `json:"imageURL"`
+	ImageURL  string `json:"imageUrl"`
 	Source    string `json:"source"`
 	ZeroWidth bool   `json:"zeroWidth"`
 }

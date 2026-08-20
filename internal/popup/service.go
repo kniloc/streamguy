@@ -61,6 +61,8 @@ func (s *Service) themeWithFont() *material.Theme {
 
 		if s.LoadedFontFace.Face != nil {
 			th.Shaper = text.NewShaper(text.WithCollection([]font.FontFace{s.LoadedFontFace}))
+		} else if th.Shaper == nil {
+			th.Shaper = text.NewShaper()
 		}
 		s.cachedTheme = &th
 	})
@@ -465,6 +467,7 @@ func (s *Service) renderCommandContent(gtx layout.Context, pw *Window, th *mater
 func (s *Service) runChatPopup(pw *Window, th *material.Theme) error {
 	var ops op.Ops
 	resized := false
+	readyToResize := false
 
 	defer func() {
 		if s.EmoteManager != nil {
@@ -496,8 +499,22 @@ func (s *Service) runChatPopup(pw *Window, th *material.Theme) error {
 			HandleCopyButton(gtx, pw)
 			HandleEmoteHoverEvents(gtx, pw, s.EmoteManager)
 
-			if !resized && time.Since(pw.StartTime) > 100*time.Millisecond {
-				resized = s.resizeWindowToContent(gtx, pw, th)
+			if !resized && time.Since(pw.StartTime) > 150*time.Millisecond {
+				allLoaded := true
+				for _, segment := range pw.MessageSegments {
+					if segment.IsEmote {
+						if _, err := s.EmoteManager.GetEmote(segment.ImageURL); err != nil {
+							allLoaded = false
+							break
+						}
+					}
+				}
+				if allLoaded {
+					if readyToResize {
+						resized = s.resizeWindowToContent(gtx, pw, th)
+					}
+					readyToResize = true
+				}
 			}
 
 			paint.Fill(gtx.Ops, render.SilverBackground)
@@ -571,8 +588,10 @@ func (s *Service) resizeWindowToContent(gtx layout.Context, pw *Window, th *mate
 	dims := s.renderChatContent(measureGtx, pw, th)
 	macro.Stop()
 
-	desiredHeight := ClampHeight(dims.Size.Y + 10)
-	pw.GioWindow.Option(app.Size(unit.Dp(DefaultWindowWidth), unit.Dp(desiredHeight)))
+	const titleBarHeight = 20
+	desiredHeight := gtx.Metric.PxToDp(ClampHeight(dims.Size.Y+10)) + unit.Dp(titleBarHeight)
+	log.Printf("resize: dims=%v desiredHeight=%v", dims.Size, desiredHeight)
+	pw.GioWindow.Option(app.Size(unit.Dp(DefaultWindowWidth), desiredHeight))
 
 	if pw.HWND != 0 {
 		go func(hwnd windows.HWND) {
