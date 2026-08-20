@@ -466,7 +466,6 @@ func (s *Service) renderCommandContent(gtx layout.Context, pw *Window, th *mater
 
 func (s *Service) runChatPopup(pw *Window, th *material.Theme) error {
 	var ops op.Ops
-	var emoteReadyAt time.Time
 	resized := false
 
 	defer func() {
@@ -494,17 +493,14 @@ func (s *Service) runChatPopup(pw *Window, th *material.Theme) error {
 
 		case app.FrameEvent:
 			gtx := app.NewContext(&ops, ev)
+			skipPaint := false
 
 			if pw.PendingHeight > 0 {
 				dp := gtx.Metric.PxToDp(pw.PendingHeight)
 				pw.GioWindow.Option(app.Size(unit.Dp(DefaultWindowWidth), dp))
 				pw.PendingHeight = 0
-				if pw.HWND != 0 {
-					rect, ok := window.GetRect(pw.HWND)
-					if ok {
-						log.Printf("post-resize window rect: h=%d", rect.Bottom-rect.Top)
-					}
-				}
+				skipPaint = true
+				pw.GioWindow.Invalidate()
 			}
 
 			HandleContextMenuEvents(gtx, pw)
@@ -522,19 +518,19 @@ func (s *Service) runChatPopup(pw *Window, th *material.Theme) error {
 					}
 				}
 				if allLoaded {
-					if emoteReadyAt.IsZero() {
-						emoteReadyAt = time.Now()
+					resized = s.resizeWindowToContent(gtx, pw, th)
+					if resized {
+						skipPaint = true
 					}
-					if time.Since(emoteReadyAt) > 100*time.Millisecond {
-						resized = s.resizeWindowToContent(gtx, pw, th)
-					}
-				} else {
-					emoteReadyAt = time.Time{}
 				}
 			}
 
-			paint.Fill(gtx.Ops, render.SilverBackground)
-			s.renderChatContent(gtx, pw, th)
+			if !skipPaint {
+				paint.Fill(gtx.Ops, render.SilverBackground)
+				s.renderChatContent(gtx, pw, th)
+			} else {
+				paint.Fill(gtx.Ops, render.SilverBackground)
+			}
 
 			if pw.ContextMenu {
 				RenderContextMenu(gtx, pw, th)
@@ -606,6 +602,8 @@ func (s *Service) resizeWindowToContent(gtx layout.Context, pw *Window, th *mate
 
 	desiredHeight := ClampHeight(dims.Size.Y + 10)
 	pw.PendingHeight = desiredHeight
+
+	pw.GioWindow.Invalidate()
 
 	if pw.HWND != 0 {
 		go func(hwnd windows.HWND) {
