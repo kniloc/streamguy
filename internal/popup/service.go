@@ -466,8 +466,8 @@ func (s *Service) renderCommandContent(gtx layout.Context, pw *Window, th *mater
 
 func (s *Service) runChatPopup(pw *Window, th *material.Theme) error {
 	var ops op.Ops
+	var emoteReadyAt time.Time
 	resized := false
-	readyToResize := false
 
 	defer func() {
 		if s.EmoteManager != nil {
@@ -496,8 +496,15 @@ func (s *Service) runChatPopup(pw *Window, th *material.Theme) error {
 			gtx := app.NewContext(&ops, ev)
 
 			if pw.PendingHeight > 0 {
-				pw.GioWindow.Option(app.Size(unit.Dp(DefaultWindowWidth), gtx.Metric.PxToDp(pw.PendingHeight)))
+				dp := gtx.Metric.PxToDp(pw.PendingHeight)
+				pw.GioWindow.Option(app.Size(unit.Dp(DefaultWindowWidth), dp))
 				pw.PendingHeight = 0
+				if pw.HWND != 0 {
+					rect, ok := window.GetRect(pw.HWND)
+					if ok {
+						log.Printf("post-resize window rect: h=%d", rect.Bottom-rect.Top)
+					}
+				}
 			}
 
 			HandleContextMenuEvents(gtx, pw)
@@ -515,10 +522,14 @@ func (s *Service) runChatPopup(pw *Window, th *material.Theme) error {
 					}
 				}
 				if allLoaded {
-					if readyToResize {
+					if emoteReadyAt.IsZero() {
+						emoteReadyAt = time.Now()
+					}
+					if time.Since(emoteReadyAt) > 100*time.Millisecond {
 						resized = s.resizeWindowToContent(gtx, pw, th)
 					}
-					readyToResize = true
+				} else {
+					emoteReadyAt = time.Time{}
 				}
 			}
 
@@ -593,8 +604,7 @@ func (s *Service) resizeWindowToContent(gtx layout.Context, pw *Window, th *mate
 	dims := s.renderChatContent(measureGtx, pw, th)
 	macro.Stop()
 
-	const titleBarHeight = 32
-	desiredHeight := ClampHeight(dims.Size.Y+10) + gtx.Dp(unit.Dp(titleBarHeight))
+	desiredHeight := ClampHeight(dims.Size.Y + 10)
 	pw.PendingHeight = desiredHeight
 
 	if pw.HWND != 0 {
