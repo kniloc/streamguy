@@ -495,6 +495,11 @@ func (s *Service) runChatPopup(pw *Window, th *material.Theme) error {
 		case app.FrameEvent:
 			gtx := app.NewContext(&ops, ev)
 
+			if pw.PendingHeight > 0 {
+				pw.GioWindow.Option(app.Size(unit.Dp(DefaultWindowWidth), gtx.Metric.PxToDp(pw.PendingHeight)))
+				pw.PendingHeight = 0
+			}
+
 			HandleContextMenuEvents(gtx, pw)
 			HandleCopyButton(gtx, pw)
 			HandleEmoteHoverEvents(gtx, pw, s.EmoteManager)
@@ -588,10 +593,9 @@ func (s *Service) resizeWindowToContent(gtx layout.Context, pw *Window, th *mate
 	dims := s.renderChatContent(measureGtx, pw, th)
 	macro.Stop()
 
-	const titleBarHeight = 20
-	desiredHeight := gtx.Metric.PxToDp(ClampHeight(dims.Size.Y+10)) + unit.Dp(titleBarHeight)
-	log.Printf("resize: dims=%v desiredHeight=%v", dims.Size, desiredHeight)
-	pw.GioWindow.Option(app.Size(unit.Dp(DefaultWindowWidth), desiredHeight))
+	const titleBarHeight = 32
+	desiredHeight := ClampHeight(dims.Size.Y+10) + gtx.Dp(unit.Dp(titleBarHeight))
+	pw.PendingHeight = desiredHeight
 
 	if pw.HWND != 0 {
 		go func(hwnd windows.HWND) {

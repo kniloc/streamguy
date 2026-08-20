@@ -51,6 +51,7 @@ type Window struct {
 	CurrentFrame    int
 	FramesMu        sync.RWMutex
 	StartTime       time.Time
+	PendingHeight   int
 
 	ContextMenu    bool
 	ContextMenuPos image.Point
