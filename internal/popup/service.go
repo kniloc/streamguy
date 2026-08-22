@@ -468,6 +468,11 @@ func (s *Service) runChatPopup(pw *Window, th *material.Theme) error {
 	var ops op.Ops
 	resized := false
 
+	go func() {
+		time.Sleep(200 * time.Millisecond)
+		pw.GioWindow.Invalidate()
+	}()
+
 	defer func() {
 		if s.EmoteManager != nil {
 			s.EmoteManager.UnregisterWindow(pw.GioWindow)
@@ -499,7 +504,6 @@ func (s *Service) runChatPopup(pw *Window, th *material.Theme) error {
 				dp := gtx.Metric.PxToDp(pw.PendingHeight)
 				pw.GioWindow.Option(app.Size(unit.Dp(DefaultWindowWidth), dp))
 				pw.PendingHeight = 0
-				skipPaint = true
 				pw.GioWindow.Invalidate()
 			}
 
@@ -591,16 +595,30 @@ func (s *Service) runGifPopup(pw *Window, gifData *gif.GIF) error {
 }
 
 func (s *Service) resizeWindowToContent(gtx layout.Context, pw *Window, th *material.Theme) bool {
-	macro := op.Record(gtx.Ops)
-	measureGtx := gtx
-	measureGtx.Constraints.Min.X = DefaultWindowWidth
-	measureGtx.Constraints.Max.X = DefaultWindowWidth
-	measureGtx.Constraints.Max.Y = 10000
+	emoteOnly := len(pw.MessageSegments) > 0
+	for _, seg := range pw.MessageSegments {
+		if !seg.IsEmote {
+			emoteOnly = false
+			break
+		}
+	}
 
-	dims := s.renderChatContent(measureGtx, pw, th)
-	macro.Stop()
+	var desiredHeight int
+	if emoteOnly {
+		desiredHeight = ClampHeight(180)
+	} else {
+		macro := op.Record(gtx.Ops)
+		measureGtx := gtx
+		measureGtx.Constraints.Min.X = DefaultWindowWidth
+		measureGtx.Constraints.Max.X = DefaultWindowWidth
+		measureGtx.Constraints.Max.Y = 10000
 
-	desiredHeight := ClampHeight(dims.Size.Y + 10)
+		dims := s.renderChatContent(measureGtx, pw, th)
+		macro.Stop()
+
+		desiredHeight = ClampHeight(dims.Size.Y + 10)
+	}
+
 	pw.PendingHeight = desiredHeight
 
 	pw.GioWindow.Invalidate()
